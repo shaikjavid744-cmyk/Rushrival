@@ -1,0 +1,40 @@
+{
+  "iteration": 6,
+  "phase": "5-6",
+  "passed": 12,
+  "failed": 3,
+  "retest_needed": true,
+  "bugs": [
+    {
+      "severity": "critical",
+      "title": "Every public website page crashes to 'Something went wrong' (ErrorBoundary)",
+      "location": "/app/frontend/src/components/site/SiteLayout.jsx:75  `useEffect(() => window.scrollTo(0, 0), [pathname]);`",
+      "root_cause": "The arrow function implicitly returns the value of window.scrollTo(). In current Chromium (UA Chrome/156) scrollTo returns a Promise (verified in page: String(window.scrollTo(0,0)) === '[object Promise]'). React then treats that Promise as the effect cleanup and throws 'TypeError: destroy is not a function'. Same pattern at line 25 (`() => setOpen(false)`) is harmless but should also use braces. Fix: `useEffect(() => { window.scrollTo(0, 0); }, [pathname]);`",
+      "evidence": "Screenshot site-pages-catalog-seo-404-failure.png shows the 'Something went wrong / RELOAD' boundary on /, /news and /support. Console: 'useEffect must not return anything besides a function... TypeError: destroy is not a function'. The backend is healthy: GET /api/v1/public/catalog 200 {characters:6,boards:6,worlds:6,powerups:5}; /public/news 200 empty_message 'No news yet — check back soon'; /public/site-config store_url_android null; /sitemap.xml 200. The admin realm (not under SiteLayout) renders fine.",
+      "blocks": ["JRN-80/81/89/90", "JRN-82/83", "JRN-84..88 (UI)"]
+    }
+  ],
+  "action_items": [
+    {"type": "note", "detail": "Each TOTP code works only once, so test helpers wait for a fresh 30s window (/tmp/rr_totp_used.json). The ingress rate-limits admin login (429) when browser checks run back to back, so wait about 60-90s between admin browser runs."},
+    {"type": "note", "detail": "The admin session cookie is Secure, so over plain http://localhost the tests set the Cookie header by hand. This is expected and not a bug."},
+    {"type": "note", "detail": "POST /admin/purchases/{id}/reverify on a mock purchase returns 200 (mock adapter). Per spec_deviations, real tokens would return verification_unavailable."},
+    {"type": "note", "detail": "Cleanup verified: /api/v1/config maintenance=false. /public/news has no items. Config is now v22 after the rollbacks, with the same values as before the tests (zoe 25000 coins). Throwaway admins tscheck-auth-*/tscheck-lock-* (viewer role) remain. The lock admin is locked."}
+  ],
+  "checks": [
+    {"criterion": "JRN-80/81/89/90 website pages, catalog, SEO, 404", "name": "test_tscheck_p5_site.py::test_catalog_counts_and_seo", "lane": "backend", "status": "passed", "evidence": "GET /public/catalog 200 counts {characters:6,boards:6,worlds:6,powerups:5}; GET /public/sitemap 200"},
+    {"criterion": "JRN-80/81/89/90 website pages, catalog, SEO, 404", "name": "site-pages-catalog-seo-404", "lane": "browser", "status": "failed", "evidence": "Home renders the ErrorBoundary 'Something went wrong' (home-hero not found). Cause: SiteLayout scrollTo effect returns a Promise. The API is healthy (see bug)."},
+    {"criterion": "JRN-82/83 news empty state + download honesty", "name": "test_tscheck_p5_site.py::test_news_empty_by_default+test_site_config_download_honesty", "lane": "backend", "status": "passed", "evidence": "GET /public/news items [] empty_message 'No news yet — check back soon'; site-config store_url_android null"},
+    {"criterion": "JRN-82/83 news empty state + download honesty", "name": "site-news-empty-download-honesty", "lane": "browser", "status": "failed", "evidence": "/news shows the ErrorBoundary crash (news-page not found). Same root cause."},
+    {"criterion": "JRN-84/85/86/87/88 contact, spam, errors, deletion, cookies", "name": "test_tscheck_p5_contact.py", "lane": "backend", "status": "passed", "evidence": "valid POST /public/contact -> ticket_no RR-xxxxxx; too-fast -> spam_rejected; honeypot -> spam_rejected; invalid -> 422; POST /public/data-deletion -> request_id del_..."},
+    {"criterion": "JRN-84/85/86/87/88 contact, spam, errors, deletion, cookies", "name": "site-contact-errors-deletion-cookies", "lane": "browser", "status": "failed", "evidence": "/support shows the ErrorBoundary crash (cookie-banner/contact-form not found). Same root cause."},
+    {"criterion": "JRN-92/93/106 admin auth, TOTP, lockout, player-token rejection", "name": "test_tscheck_p6_auth.py", "lane": "backend", "status": "passed", "evidence": "new admin mfa_enrolled false -> enroll -> wrong code 401 -> correct code 200; player JWT on /admin/me 401/403; 5 wrong passwords -> login 423"},
+    {"criterion": "JRN-92/93/106 + JRN-94 admin auth/RBAC UI", "name": "admin-totp-rbac-roles", "lane": "browser", "status": "passed", "evidence": "000000 shows admin-login-error. A valid code reaches the layout. Viewer has no Admins nav. Finance has Purchases but no Remote config/Admins. /admin/admins shows admin-forbidden."},
+    {"criterion": "JRN-94 RBAC per role", "name": "test_tscheck_p6_rbac.py", "lane": "backend", "status": "passed", "evidence": "support/moderator/finance/liveops/publisher/viewer: allowed GET 200, forbidden GET 403; viewer POST /admin/news 403"},
+    {"criterion": "JRN-96/97/103 player support, moderation, purchases", "name": "test_tscheck_p6_players.py", "lane": "backend", "status": "passed", "evidence": "search finds player@rushrivals.test. Compensate +100 with the same Idempotency-Key replayed=true, wallet 100 once, audit entry present. Ban -> uid gone from /leaderboard. Revoke with empty reason 422, with reason 200 -> ledger + audit rows. Token masked."},
+    {"criterion": "JRN-96/97/103 player support, moderation, purchases", "name": "admin-support-player-detail", "lane": "browser", "status": "passed", "evidence": "Support search player@rushrivals.test -> players-table -> admin-player-detail with compensate button; tickets-table renders"},
+    {"criterion": "JRN-98/99/100/107 remote config four-eyes, publish, rollback, maintenance", "name": "test_tscheck_p6_config.py", "lane": "backend", "status": "passed", "evidence": "draft diff contains zoe. Self-approve rejected. Publish before approve 409. Publisher approve+publish -> /catalog zoe 25001. Rollback -> 25000. Quick maintenance confirm=false 4xx, confirm=true -> /config maintenance true, restored false."},
+    {"criterion": "JRN-98/99/100/107 + JRN-101 admin config/flags/content UI", "name": "admin-owner-config-flags-audit", "lane": "browser", "status": "passed", "evidence": "Publisher sees config-versions-table, maintenance-switch and admin-content. The audit nav is hidden, which is correct because publisher has no audit:view. First runs failed because of my selector and a 429 rate limit, not app bugs."},
+    {"criterion": "JRN-101/102/104/105 news/FAQ publish, tickets, audit CSV, sessions", "name": "test_tscheck_p6_content.py", "lane": "backend", "status": "passed", "evidence": "publish -> slug in /public/news and article 200; unpublish -> gone and 404. Ticket reply 200 status replied, close -> closed. Audit items have before/after; export.csv text/csv. Revoked session -> /admin/me 401 while the other session stays 200."},
+    {"criterion": "regression (earlier phases)", "name": "e1_tests full suite (43 tests)", "lane": "backend", "status": "passed", "evidence": "43 passed in 192s"}
+  ]
+}

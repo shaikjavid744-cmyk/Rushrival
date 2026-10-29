@@ -12,6 +12,10 @@ const obs = (kind: Obstacle["kind"], lane: -1 | 0 | 1, z = 0): Obstacle => ({
   lane,
   z,
   depth: kind === "train" ? TUNING.trainLength : TUNING.barrierDepth,
+  ramp: false,
+  moving: false,
+  vz: 0,
+  row: null,
 });
 
 describe("collision", () => {
@@ -50,9 +54,9 @@ describe("collision", () => {
 
   it("coins: picked in lane, not in other lane, not when far above", () => {
     const p = createPlayer();
-    expect(picksCoin(p, { active: true, lane: 0, z: 0.3, y: 0.6 }, 0)).toBe(true);
-    expect(picksCoin(p, { active: true, lane: 1, z: 0.3, y: 0.6 }, 0)).toBe(false);
-    expect(picksCoin(p, { active: true, lane: 0, z: 0.3, y: 2.0 }, 0)).toBe(false);
+    expect(picksCoin(p, { active: true, lane: 0, x: 0, z: 0.3, y: 0.6 }, 0)).toBe(true);
+    expect(picksCoin(p, { active: true, lane: 1, x: 1, z: 0.3, y: 0.6 }, 0)).toBe(false);
+    expect(picksCoin(p, { active: true, lane: 0, x: 0, z: 0.3, y: 2.0 }, 0)).toBe(false);
   });
 });
 
@@ -95,7 +99,7 @@ describe("engine coin collection", () => {
     e.update(0.1);
     for (let i = 0; i < 60 * 30; i++) e.update(1 / 60);
     expect(e.speed).toBeGreaterThan(s0);
-    for (let i = 0; i < 60 * 120; i++) e.update(1 / 60);
+    for (let i = 0; i < 60 * 180; i++) e.update(1 / 60);
     expect(e.speed).toBe(TUNING.maxSpeed);
   });
 

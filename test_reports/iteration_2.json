@@ -1,0 +1,39 @@
+{
+  "summary": "Phase 2 E2E on Expo web preview (390x844 + 360x640) plus backend and Jest. Backend health/openapi passed 3/3, Jest passed 91/91. Almost every requested journey passed: onboarding + gift once, every menu nav button, collections purchase/ad/level locks, daily claim/clock rollback, missions claim once, shop coins/gems/real-money stub, inbox claim once + badge, profile rename/stats/leaderboard, settings persist (in-app nav), help/legal, reset, run speed 8.55 m/s, lanes/jump/slide, train roof y=2.6 with roof coins, pause menu + confirmations, double-tap hoverboard (x3->x2, HUD timer), revive 5 then 10 gems then straight to game over, decline/timeout to game over, coins banked exactly once. Found 1 CRITICAL data-loss bug: reloading or deep-linking any screen except /menu and /run wipes the save.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "inbox.tsx message card", "issue": "The claim Pressable (inbox-claim-welcome) sits inside the card Pressable (inbox-msg-*). On web this nests a <button> inside a <button>. It triggers a console error and a LogBox toast over the bottom of the menu in dev, and in testing a tap on Settings opened the LogBox instead.", "testID": "inbox-msg-welcome", "priority": "LOW"},
+      {"component": "onboarding gift step", "issue": "Gift / shield / document Ionicons sit on the left of the card instead of centered, because the card uses alignItems: stretch.", "testID": "onboarding-step-gift", "priority": "LOW"}
+    ],
+    "integration_issues": [
+      {"flow": "Reload or deep link on any screen except /menu and /run (settings, shop, collection, daily, missions, inbox, profile, help, legal)", "issue": "CRITICAL DATA LOSS. Only menu.tsx and run.tsx check `ready` and redirect to '/'. Other screens render with defaultSave(): the settings header shows 0 coins / 0 gems and every toggle is back to default. The first action on that screen (for example toggle-sound) runs commit(default + change) and writes it to storage. That overwrites the real save, and the next launch goes to /onboarding with all progress lost. Reproduced: complete onboarding -> reload on /settings -> tap toggle-sound -> go to '/' -> sent to onboarding.", "affected_testIDs": ["settings-screen", "toggle-sound", "shop-screen", "collection-characters", "daily-screen", "missions-screen", "inbox-screen", "profile-screen"]},
+      {"flow": "Hoverboard use -> stats.powerupsUsed / mission m-pu-3", "issue": "One hoverboard use is counted twice. consumeHoverboard() adds 1 to stats.powerupsUsed, then engine.activatePowerUp('hoverboard') adds 1 to e.powerupsUsed, and bankRun adds that again.", "affected_testIDs": ["goal-m-pu-3", "stat-power-ups-used"]}
+    ],
+    "design_issues": [
+      {"screen": "All sub-screens", "issues": ["A success toast covers the ScreenHeader (back button and balance) for several seconds after purchases or claims."]},
+      {"screen": "Settings", "issues": ["Segmented controls (graphics-*, language-*) do not expose aria-checked or aria-selected on web, so accessibilityState is not rendered."]},
+      {"screen": "Collection", "issues": ["Leo's 'Available soon' pill wraps onto 2 lines."]}
+    ],
+    "react_native_issues": [{"component": "inbox.tsx", "issue": "Nested Pressable (see ui_bugs)."}]
+  },
+  "test_report_links": ["/app/backend/tests/test_health.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "CRITICAL: Guard every screen until the save is loaded, so a cold load cannot overwrite storage with the default save. Either add `if (!ready) return <Redirect href='/' />` to each screen or put a ready gate in the root layout. Also make commit/persist a no-op while ready is false.",
+    "Stop counting a hoverboard use twice: drop the stats.powerupsUsed increment in consumeHoverboard, or don't count the hoverboard in engine.activatePowerUp.",
+    "inbox.tsx: move the claim button out of the card Pressable (or make the card a View with a separate header Pressable).",
+    "Center the icons on the onboarding steps (alignSelf: 'center')."
+  ],
+  "critical_code_review_comments": [
+    "GameProvider.update/commit persist whatever is in saveRef, even before init() has loaded data. This is the root cause of the data loss.",
+    "devFlags (clock offset, save failure) live only in memory and reset on reload. That is fine for dev, but the daily test has to navigate inside the app.",
+    "The dev-grant-coins button calls update() directly and bypasses applyTx and the ledger. It is dev-only, so this is acceptable."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100%", "frontend": "~93% (requested journeys pass; reload/deep-link data loss and a double-counted stat failed)"},
+  "seed_data_creation": "None; every browser context starts with empty storage",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Close dialogs with <testID>-close (RewardDialog), <testID>-ok (PurchaseStatusDialog) or <testID>-confirm (ConfirmationDialog). The double-tap hoverboard only reacts to onTouchEnd, so dispatch TouchEvent touchstart/touchend on run-gesture-area; mouse clicks don't work. Navigate inside the app (header -back) to keep devFlags. To retest the data-loss fix: reload on /settings, then tap a toggle, then check the coins are kept.",
+  "rca_of_issue": "app/_layout.tsx mounts every route under GameProvider with defaultSave. Only app/index.tsx calls init(), and only menu.tsx and run.tsx redirect to '/' when ready is false. On a web reload or deep link, other routes render the default state, and their actions call commit() -> persist() -> writeSave over the real save. Fix: a global ready gate plus blocking persist while not ready."
+}

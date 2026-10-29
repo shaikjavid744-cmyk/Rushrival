@@ -1,0 +1,22 @@
+{
+  "iteration": 5,
+  "phase": "4",
+  "passed": 7,
+  "failed": 0,
+  "bugs": [],
+  "action_items": [
+    {"type": "note", "severity": "low", "detail": "Interstitial cap check covers runs 1-2 plus the menu (no interstitial shown, none during a run). Runs 6+ and the 180s gap were not exercised in the browser; they rely on the adsCore jest tests."},
+    {"type": "note", "severity": "low", "detail": "Refund/void revocation has no HTTP test hook. RTDN returns 503 because it is unconfigured, as designed. Revocation plus the iap_refund ledger entry are covered in-process by backend/tests/test_phase4.py (11 passed)."},
+    {"type": "note", "severity": "low", "detail": "The first rewarded ad shows a mock Google UMP consent dialog before the ad outcome picker, so checks accept consent first. The mock timeout is a real 8s wait, by design."}
+  ],
+  "retest_needed": false,
+  "checks": [
+    {"criterion": "JRN-67/76/68/74 server verify idempotency, unconfigured, remove-ads entitlement, RTDN unconfigured, ad unlock at 5", "name": "backend/e1_tests/test_tscheck_phase4_billing.py", "lane": "backend", "status": "passed", "evidence": "POST /purchases/verify mock_ twice: verified then already_processed, gems unchanged. A non-mock token gets 503 verification_unavailable with no grant. A guest rr_remove_ads purchase sets GET /entitlements remove_ads=true. POST /billing/rtdn returns 503. POST /ads/reward unlock galaxy x5 counts progress 1..5 with unlocked=true. Full e1 suite: 18 passed. tests/test_phase4.py (refund revoke + ledger): 11 passed."},
+    {"criterion": "JRN-64/65/66 shop + mock purchase states", "name": "p4-shop-purchase-states", "lane": "browser", "status": "passed", "evidence": "TEST MODE label shown, Coins/Gems/Offers tabs present. Cancel shows 'Purchase cancelled'. Fail shows Retry, which then succeeds. Pending, then Complete pending, shows success. Two 100-gem grants moved gems from 50 to 250, so each grant landed exactly once."},
+    {"criterion": "JRN-68/69 remove ads, restore", "name": "p4-shop-purchase-states", "lane": "browser", "status": "passed", "evidence": "Same check as above: Remove Ads success, then button reads 'Already owned'. Restore toast 'Restored N purchases'. Settings remove-ads status 'Active'. Store unavailable + Retry clears the banner."},
+    {"criterion": "JRN-70/71/72 rewarded ads", "name": "p4-rewarded-ads-run", "lane": "browser", "status": "passed", "evidence": "Ad timeout shows 'Ad not available right now' with Try again / No thanks. Try again + complete revives the run. On the second crash, 'Revive limit reached'. Early close shows 'Watch the full video' and coins stay unchanged (19). Complete doubles them to 38, then 'Reward already claimed'."},
+    {"criterion": "JRN-73/74 interstitial caps + ad unlock", "name": "p4-ad-unlock-interstitial", "lane": "browser", "status": "passed", "evidence": "Galaxy starts at 0/5. Early close does not count. Five completed ads step it 1/5..4/5, then 'Galaxy unlocked!'. No interstitial across runs 1-2 or on returning to the menu."},
+    {"criterion": "JRN-77 child mode parental gate", "name": "p4-child-parental-gate", "lane": "browser", "status": "passed", "evidence": "In a child profile, Buy opens the parental gate before any store dialog. A wrong sum shows an error. The correct sum opens the mock purchase. Settings shows analytics off in child mode and ads non-personalised."},
+    {"criterion": "JRN-78/79 privacy & ad choices, analytics toggle, guest fallback", "name": "p4-privacy-guest-fallback", "lane": "browser", "status": "passed", "evidence": "Analytics toggle switches ON to OFF. 'Privacy & ad choices' opens the UMP dialog, and decline makes ads non-personalised. A failed sign-in (401, expected) shows Continue as guest, which returns to the menu with the coin balance kept."}
+  ]
+}

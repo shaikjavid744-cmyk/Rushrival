@@ -86,6 +86,22 @@ async def get_status_checks():
 # Include the router in the main app
 app.include_router(api_router)
 
+# Phase 3: versioned online API (/api/v1) — accounts, economy, runs, leaderboard, events, config, support.
+from rr.main import mount as mount_v1  # noqa: E402
+from migrations.runner import migrate_up  # noqa: E402
+
+mount_v1(app)
+
+
+@app.on_event("startup")
+async def apply_migrations():
+    from rr.core import get_db
+    await migrate_up(get_db())
+    from rr.live import bootstrap
+    from rr.admin_seed import seed_owner
+    await bootstrap()
+    await seed_owner()
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,

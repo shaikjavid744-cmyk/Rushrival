@@ -7,6 +7,8 @@ export interface PlayerState {
   lane: Lane; // target lane
   x: number; // visual/physical lateral position in lane units
   y: number; // height above ground (m)
+  support: number; // height of surface under the runner
+  landTimer: number;
   vy: number;
   airborne: boolean;
   fastFall: boolean;
@@ -23,6 +25,8 @@ export function createPlayer(): PlayerState {
     lane: 0,
     x: 0,
     y: 0,
+    support: 0,
+    landTimer: 0,
     vy: 0,
     airborne: false,
     fastFall: false,
@@ -100,21 +104,29 @@ export function stepPlayer(p: PlayerState, dt: number, events: PlayerEvent[]) {
   const diff = p.lane - p.x;
   p.x += Math.max(-maxMove, Math.min(maxMove, diff));
 
-  // Vertical physics.
+  // Vertical physics. `support` = height of whatever is under the runner (ground 0, ramp, train roof).
+  const support = p.support;
+  if (!p.airborne && p.y > support + 0.02) {
+    p.airborne = true; // ran off a roof edge
+    p.vy = 0;
+  }
+  if (!p.airborne && p.y < support) p.y = support; // climbing a ramp
   if (p.airborne) {
     p.vy -= (p.fastFall ? TUNING.fastFallGravity : TUNING.gravity) * dt;
     p.y += p.vy * dt;
-    if (p.y <= 0) {
-      p.y = 0;
+    if (p.y <= support) {
+      p.y = support;
       p.vy = 0;
       p.airborne = false;
       p.fastFall = false;
+      p.landTimer = 0.18;
       if (p.slideOnLand) {
         p.slideOnLand = false;
         startSlide(p, events);
       }
     }
   }
+  p.landTimer = Math.max(0, p.landTimer - dt);
 
   if (p.sliding) {
     p.slideTimer -= dt;

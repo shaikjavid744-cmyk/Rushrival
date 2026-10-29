@@ -1,0 +1,42 @@
+{
+  "summary": "Phase 5/6 backend tested live over HTTPS (EXPO_PUBLIC_BACKEND_URL) with the new tests/test_phase56_live_api.py: 23 tests, all passing after one fix. I also ran a probe script for edge cases. CRITICAL bug found and fixed: admin login used EmailStr, which rejects the special-use .test TLD, so every documented admin (owner@rushrivals.test plus the 6 demo staff) got 422 and could not sign in. The main agent's in-process tests missed it because they use @t.dev emails. Confirmed working: public catalog (6/6/6/5, art served as image/*), news empty with empty_message, the 404 slug, 5 FAQ, site-config, sitemap; contact honeypot, <3s check, validation, bad token, 201 RR-xxxxxx, 429 on the 6th submission (spoofed XFF does not bypass); data deletion; TOTP enrol/verify, HttpOnly+Secure cookie on path /api/v1/admin, CSRF 403, password-only 401, player Bearer 401, player can't sign in to the admin realm, lockout 5 -> 423, session list/revoke/revoke-all; role samples; honest dashboard; player detail masking; compensation idempotency (replayed=true, wallet +7 once); suspend hides from the leaderboard, login blocked, unban restores; config draft -> diff -> submit -> four_eyes 403 -> approve -> publish -> /api/v1/catalog shows the new price and version -> rollback creates a new version and restores 25000; publishing a maintenance-ON draft without confirm -> 400; quick maintenance toggle on then off; news create/409 slug/publish+inbox/unpublish/delete; ticket RR-DEMO01 assign/reply/close; audit entries + CSV export; openapi has 9 public and >=50 admin paths; regression of health and player endpoints. Main agent's test_phase56.py is still 7/7.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "POST /api/v1/admin/auth/login", "issue": "Login model used EmailStr, and email-validator rejects the .test TLD as special-use, so all seeded admins got 422 validation_error and nobody could sign in. FIXED by T1: Login.email is now str (max 200).", "priority": "CRITICAL"}
+    ],
+    "minor": [
+      {"endpoint": "POST /api/v1/admin/players/{id}/enforce (suspend)", "issue": "A suspension never expires. It sets banned=True plus suspended_until, but nothing checks suspended_until. Auth login only checks banned, so a 'days:1' suspension acts as a permanent ban (verified: login still returns 403 after suspended_until was set in the past). The leaderboard filter has the same problem."},
+      {"endpoint": "core._user_from_request", "issue": "Banning revokes refresh tokens, but the player's existing access JWT keeps working (GET /me returns 200 after the ban) until it expires about 15 min later. current_user does not check banned, so a banned player can keep submitting runs and scores in that window."},
+      {"endpoint": "POST /api/v1/admin/auth/totp/verify", "issue": "No TOTP replay protection: the same 6-digit code was accepted for 2 separate sign-ins. Store the last used time-step per admin and reject reuse."},
+      {"endpoint": "POST /api/v1/admin/config/rollback", "issue": "The audit 'before' field is wrong. _make_live reads live.published() after the new version is inserted, so 'before' records the new version itself (audit showed target v4, before {version:4})."},
+      {"endpoint": "POST /api/v1/admin/admins", "issue": "NewAdmin.email is EmailStr, so it rejects .test emails (422). This is inconsistent with the seeded admins; decide on the policy."},
+      {"endpoint": "Cookie via preview ingress", "issue": "The backend sends SameSite=strict (verified on localhost:8001), but the preview ingress rewrites it to 'SameSite=None; Partitioned'. This is an environment issue. Verify on the production deployment."},
+      {"endpoint": "POST /api/v1/admin/config/versions/{v}/publish", "issue": "Publishing an older draft silently reverts any quick toggles or rollbacks published after the draft was created (it is a full snapshot). Consider requiring the diff against current, or rebasing."},
+      {"endpoint": "GET /api/v1/admin/audit/export.csv", "issue": "No CSV formula-injection escaping (cells starting with = + - @)."},
+      {"endpoint": "seed demo data", "issue": "Demo players DemoDash/DemoBlaze/DemoPixel have runs but no entries on the all-time leaderboard, so the 'suspend hides from leaderboard' journey can't be shown with demo players."}
+    ]
+  },
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": [], "react_native_issues": []},
+  "test_report_links": ["/app/backend/tests/test_phase56_live_api.py", "/app/test_reports/pytest/phase56_live.xml"],
+  "action_items": [
+    "Keep or adjust the T1 fix in admin.py Login (email: str) and decide on NewAdmin EmailStr vs .test emails",
+    "Make suspensions expire: treat banned with suspended_until < now as unbanned (auth login, leaderboard filter, current_user)",
+    "Reject banned users in current_user/_user_from_request so access tokens stop working right away",
+    "Add TOTP replay protection (last_totp_step)",
+    "Fix the rollback audit 'before' (read the previous published version before insert)",
+    "Optional: escape CSV formula characters in the audit export; seed scores for demo players"
+  ],
+  "critical_code_review_comments": [
+    "admin.py is 831 lines (>700): split into auth/players/config/content/tickets modules",
+    "live.apply mutates in-process tables. That works with uvicorn --workers 1, but multiple workers or instances would diverge without a reload/pub-sub on publish",
+    "totp_enroll doesn't call check_locked, and each call overwrites totp_pending",
+    "Imports inside functions in admin.py (json, html.escape, datetime)"
+  ],
+  "updated_files": ["/app/backend/rr/routers/admin.py (Login.email EmailStr -> str)", "/app/backend/tests/test_phase56_live_api.py (new)"],
+  "success_rate": {"backend": "100% of 23 live tests after the critical login fix (0% admin flows before the fix); 9 minor issues open", "frontend": "N/A (backend only)"},
+  "seed_data_creation": "Enrolled TOTP for owner and all 6 demo staff. Secrets are saved in /tmp/rr_admin_totp.json and also readable from db.admins.totp_secret. Config versions v2-v7 were created (v6 = current published, maintenance off, zoe 25000). Test tickets, deletion requests, news, the lockout admin and the RR-DEMO01 changes were cleaned up or restored.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Admins are already enrolled; get TOTP secrets from db.admins.totp_secret. The contact rate limiter is in-memory: test_contact_spam_validation_rate_limit fails for 1 h after a run unless the backend restarts. The auth rate limit is 10/min per IP; the test helper backs off on 429 and regenerates the TOTP code on each retry.",
+  "rca_of_issue": "Admin login 422: pydantic EmailStr -> email-validator 2.3 check_deliverability/special-use rejects the 'test' TLD (RFC 6761). The in-process tests used @t.dev, so they never caught it. Mitigation: use plain str for the login lookup."
+}

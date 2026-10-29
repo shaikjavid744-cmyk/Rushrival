@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="3" skipped="0" tests="15" time="30.854" timestamp="2026-10-29T19:13:55.395933+00:00" hostname="agent-env-0d6ac45e-bc9e-4fc3-8316-2ec3885e7d56"><testcase classname="tests.test_phase3_spotcheck.TestAuth" name="test_login_me_refresh_rotation" time="1.517" /><testcase classname="tests.test_phase3_spotcheck.TestAuth" name="test_wrong_password" time="0.348" /><testcase classname="tests.test_phase3_spotcheck.TestAuth" name="test_no_token" time="0.138" /><testcase classname="tests.test_phase3_spotcheck.TestEconomy" name="test_purchase_missing_key" time="0.128" /><testcase classname="tests.test_phase3_spotcheck.TestEconomy" name="test_daily_then_purchase_replay" time="0.587" /><testcase classname="tests.test_phase3_spotcheck.TestEconomy" name="test_spend_hoverboard_and_revive" time="0.660" /><testcase classname="tests.test_phase3_spotcheck.TestRuns" name="test_run_happy_forged_offline" time="21.628"><failure message="AssertionError: assert {'accepted': ...d': True, ...} == {'accepted': ...rboard': True}&#10;  &#10;  Omitting 4 identical items, use -vv to show&#10;  Left contains 1 more item:&#10;  {'replayed': True}&#10;  &#10;  Full diff: (-: missing in left side, +: extra in left side)&#10;    {...&#10;  &#10;  ...Full output truncated, use '-vv' to show">tests/test_phase3_spotcheck.py:124: in test_run_happy_forged_offline
+    assert f2.json() == f.json()
+E   AssertionError: assert {'accepted': ...d': True, ...} == {'accepted': ...rboard': True}
+E     
+E     Omitting 4 identical items, use -vv to show
+E     Left contains 1 more item:
+E     {'replayed': True}
+E     
+E     Full diff: (-: missing in left side, +: extra in left side)
+E       {...
+E     
+E     ...Full output truncated, use '-vv' to show</failure></testcase><testcase classname="tests.test_phase3_spotcheck.TestOnline" name="test_leaderboard_periods_limit" time="0.641" /><testcase classname="tests.test_phase3_spotcheck.TestOnline" name="test_events" time="0.129"><failure message="AttributeError: 'str' object has no attribute 'get'">tests/test_phase3_spotcheck.py:166: in test_events
+    assert any(e.get("event_id") == "evt_temple_rush" or "Temple" in str(e.get("name", e.get("title", ""))) for e in evs), r.text
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_phase3_spotcheck.py:166: in &lt;genexpr&gt;
+    assert any(e.get("event_id") == "evt_temple_rush" or "Temple" in str(e.get("name", e.get("title", ""))) for e in evs), r.text
+               ^^^^^
+E   AttributeError: 'str' object has no attribute 'get'</failure></testcase><testcase classname="tests.test_phase3_spotcheck.TestOnline" name="test_inbox_claim_once" time="0.648" /><testcase classname="tests.test_phase3_spotcheck.TestOnline" name="test_support_ticket" time="0.186" /><testcase classname="tests.test_phase3_spotcheck.TestOnline" name="test_config" time="0.128" /><testcase classname="tests.test_phase3_spotcheck.TestOnline" name="test_error_shapes" time="0.262" /><testcase classname="tests.test_phase3_spotcheck.TestRateLimit" name="test_auth_429" time="1.828" /><testcase classname="tests.test_phase3_spotcheck.TestRateLimit" name="test_xff_spoof_bypass" time="1.895"><failure message="AssertionError: rate limit bypassable via spoofed X-Forwarded-For&#10;assert 429 in [401, 401, 401, 401, 401, 401, ...]">tests/test_phase3_spotcheck.py:212: in test_xff_spoof_bypass
+    assert 429 in codes, "rate limit bypassable via spoofed X-Forwarded-For"
+E   AssertionError: rate limit bypassable via spoofed X-Forwarded-For
+E   assert 429 in [401, 401, 401, 401, 401, 401, ...]</failure></testcase></testsuite></testsuites>

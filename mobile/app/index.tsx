@@ -1,5 +1,5 @@
 import { Image } from "expo-image";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Platform, Text, View } from "react-native";
 import Animated, { FadeIn, useAnimatedStyle, useSharedValue, withTiming, ZoomIn } from "react-native-reanimated";
@@ -33,11 +33,16 @@ export default function SplashRoute() {
   const s = useStyles();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { init, showToast } = useGame();
+  const { init, showToast, save } = useGame();
+  const saveRef = useRef(save);
+  saveRef.current = save;
   const [phase, setPhase] = useState<"loading" | "brand" | "error">("loading");
   const [error, setError] = useState("");
   const progress = useSharedValue(0);
   const alive = useRef(true);
+  const { next } = useLocalSearchParams<{ next?: string }>();
+  const nextRef = useRef(next);
+  nextRef.current = next;
 
   const run = useCallback(async () => {
     setPhase("loading");
@@ -53,7 +58,14 @@ export default function SplashRoute() {
       }
       let status = "new" as LoadStatus;
       const steps: (() => Promise<unknown>)[] = [
-        initSkia,
+        // Skia (CanvasKit on web) → decode every game image into memory → (web) preload the run screen
+        // module, so starting a run later never needs the network (offline gameplay).
+        async () => {
+          await initSkia();
+          const { preloadGameImages } = await import("@/src/game/imageCache");
+          await preloadGameImages();
+          if (Platform.OS === "web") await import("@/src/game/RunScreen");
+        },
         preloadAssets,
         () => audio.init(),
         async () => {
@@ -70,7 +82,9 @@ export default function SplashRoute() {
       setPhase("brand");
       await wait(1500);
       if (!alive.current) return;
-      router.replace("/menu");
+      // Deep link / reload on another screen: BootGate sent us here with ?next=<path>; return there after loading.
+      const target = typeof nextRef.current === "string" && nextRef.current.startsWith("/") && nextRef.current !== "/" ? nextRef.current : "/menu";
+      router.replace((saveRef.current.onboarding.done ? target : "/onboarding") as never);
       if (status === "reset") setTimeout(() => showToast("Save data was reset", "warning"), 350);
     } catch (e) {
       if (!alive.current) return;

@@ -13,13 +13,14 @@ interface Props {
   confirmLabel: string;
   cancelLabel?: string;
   destructive?: boolean;
+  confirmDisabled?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
   testID: string;
 }
 
 /** In-tree modal dialog (renders above everything placed before it). */
-export function ConfirmationDialog({ title, message, confirmLabel, cancelLabel = "Cancel", destructive, onConfirm, onCancel, testID }: Props) {
+export function ConfirmationDialog({ title, message, confirmLabel, cancelLabel = "Cancel", destructive, confirmDisabled, onConfirm, onCancel, testID }: Props) {
   const s = useStyles();
   const t = useSharedValue(0);
   useEffect(() => {
@@ -39,6 +40,7 @@ export function ConfirmationDialog({ title, message, confirmLabel, cancelLabel =
             variant={destructive ? "red" : "blue"}
             size="md"
             onPress={onConfirm}
+            disabled={confirmDisabled}
             testID={`${testID}-confirm`}
           />
           <SecondaryButton label={cancelLabel} size="md" onPress={onCancel} testID={`${testID}-cancel`} />

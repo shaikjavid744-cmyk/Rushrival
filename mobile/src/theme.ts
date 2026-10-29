@@ -35,6 +35,7 @@ const dark = {
   gold: "#FFC107",
   goldDeep: "#B37A00",
   onGold: "#3A1C00",
+  gem: "#C77DFF",
 
   success: "#22D36B",
   successDeep: "#12904A",

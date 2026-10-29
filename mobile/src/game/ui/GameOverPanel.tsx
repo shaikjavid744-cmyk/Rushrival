@@ -28,9 +28,11 @@ export interface RunSummary {
 interface Props extends RunSummary {
   onPlayAgain: () => void;
   onHome: () => void;
+  /** Rewarded "Watch Ad +coins": doubles this run's coins once. */
+  adCoins?: { state: "idle" | "loading" | "claimed"; testMode: boolean; onPress: () => void };
 }
 
-export function GameOverPanel({ score, coins, distance, newBest, onPlayAgain, onHome }: Props) {
+export function GameOverPanel({ score, coins, distance, newBest, onPlayAgain, onHome, adCoins }: Props) {
   const s = useStyles();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
@@ -78,6 +80,24 @@ export function GameOverPanel({ score, coins, distance, newBest, onPlayAgain, on
           </View>
         </View>
         <View style={s.buttons}>
+          {adCoins ? (
+            adCoins.state === "claimed" ? (
+              <Text style={[s.statLabel, { textAlign: "center" }]} testID="game-over-ad-coins-claimed">Reward already claimed</Text>
+            ) : (
+              <>
+                <PrimaryButton
+                  label={adCoins.state === "loading" ? "Loading ad…" : `Ad · +${coins} coins`}
+                  icon="play-circle"
+                  variant="navy"
+                  disabled={adCoins.state !== "idle"}
+                  onPress={adCoins.onPress}
+                  testID="game-over-ad-coins-button"
+                  accessibilityLabel={`Watch an ad for ${coins} more coins`}
+                />
+                {adCoins.testMode && adCoins.state === "idle" ? <Text style={[s.statLabel, { textAlign: "center" }]} testID="game-over-ad-test-mode">TEST MODE — no real ad</Text> : null}
+              </>
+            )
+          ) : null}
           <PrimaryButton label="Play Again" variant="gold" size="lg" icon="play" heavyHaptic onPress={onPlayAgain} testID="play-again-button" />
           <SecondaryButton label="Home" icon="home" onPress={onHome} testID="game-over-home-button" />
         </View>

@@ -1,0 +1,23 @@
+{
+  "summary": "RETEST of the iteration_9 fixes (mobile only, Expo web at 390x844, MOCK ads and billing). All pass. (1) Shop: on the FIRST attempt, mock-option-unavailable shows purchase-state-title 'Store unavailable' with purchase-store-retry, and the shop shows the shop-store-unavailable card. shop-store-retry brings back the prices ($4.99) and purchasing works. (2) Rewarded ad on revive: the UMP consent comes first, then the picker. 'Simulate load timeout' closes the picker, and ad-unavailable-dialog appears after 7.6-7.8 s with 0 mock dialogs open (no stacking). 'Try again' shows the picker again. After waiting 12 s on the picker, no unavailable dialog appears and the countdown stays at 6 (paused). 'Watch to the end' then revives the run (phase resumeCountdown). The next crash shows 'Revive limit reached' while the gem revive is still offered. Same on Game Over: timeout gives the dialog after 7.8 s; 'No thanks' resets the button to idle; waiting 12 s and then 'complete' doubles the coins once (+106 to +212, toast 'Coins doubled! +106'), and 'Reward already claimed' (game-over-ad-coins-claimed) replaces the button. (3) Mock purchase timeout ends in 'Purchase failed / Google Play didn't respond. Nothing was charged.' after 29.5 s. (4) The 'AD REVIVE' and 'AD · +106 COINS' labels are no longer truncated (scrollWidth is not larger than clientWidth). Shop tabs keep a 36 px visual height with a 6 px top and bottom hitSlop, which gives a 48 px effective target on native. Regression: a successful rr_gems_550 purchase took gems from 50 to 600 (+550 once, also on the menu). Jest passes 116/116. No page errors.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Game Over", "issues": ["'Reward already claimed' and 'TEST MODE — no real ad' (statLabel) are left-aligned inside the stretched buttons column. Add textAlign: 'center' for consistency (cosmetic)."]}
+    ],
+    "react_native_issues": []
+  },
+  "test_report_links": ["/app/test_reports/iteration_10.json"],
+  "action_items": ["Optional: centre the Game Over claimed and test-mode labels"],
+  "critical_code_review_comments": [
+    "Shop tab hitSlop only affects native. On react-native-web the chip's clickable area stays 36 px. That is acceptable, because the target is Android."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "not tested (skipped as requested)", "frontend": "100% of the retest checks (about 20)"},
+  "seed_data_creation": "Only fresh guest sessions in browser storage",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Onboarding testIDs carry the 'onboarding-' prefix (onboarding-next-welcome, onboarding-next-language, onboarding-age-over13, onboarding-terms-checkbox, onboarding-accept-terms, onboarding-next-permissions, onboarding-intro-skip, onboarding-name-input, onboarding-next-name, onboarding-claim-gift), then tutorial-skip-button and get-started-button. To crash into the revive panel: tap play-button, then poll window.__RR_DEBUG__.state.phase until it is 'revive' (call placeCoinsAhead to get coins > 0). The ConfirmationDialog buttons are `${testID}-confirm` and `${testID}-cancel`."
+}

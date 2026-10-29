@@ -1,0 +1,34 @@
+{
+  "summary": "Phase 4 E2E test plus a JRN-79 check. Backend: the full pytest suite passes 63/63, including the new test_phase4_live_api.py (11 tests against the public URL). Frontend: 10 Playwright scripts at 390x844 on the Expo web preview with the MOCK adapters. Almost everything passes: JRN-79 (continue as guest after a failed sign-in); shop TEST MODE banner, tabs on one row, 'Paid · real money' labels; purchase success (+550 once), cancel, fail + Retry, pending then complete-pending (+550 once), timeout (failed after ~29 s); Remove Ads (Already owned, disabled; Settings 'Remove Ads: Active'; restore toast 'Restored 1 purchase'; survives a reload; re-synced from the server after the local entitlements were wiped); child-mode parental gate (wrong answer shows the error, cancel works, correct answer opens the mock dialog); rewarded revive (UMP consent first, then complete revives the run, then 'Revive limit reached' while the gem revive is still offered; early shows a toast and no revive; timeout shows ad-unavailable-dialog after ~7.3 s; countdown paused while loading); double coins 29→58 once, then 'Reward already claimed'; Galaxy and Leo 0/5→5/5, unlocked and equippable; interstitial not shown after run 5 and shown after run 6 on Home, then the counter resets; Privacy & ad choices dialog; analytics toggle; signed-in purchase gives +100 gems on the server and in the local wallet; leaderboard and events regression; console shows '[rr] Firebase not configured' with no page errors. Two bugs, both in the mock adapters: (1) the 'Store unavailable' option, (2) the 8 s ad timer includes the time spent picking an option.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "billing.ts createMockBilling purchase() 'unavailable'", "issue": "On the first purchase, picking mock-option-unavailable returns {status:'failed'}. The UI shows 'Purchase failed / Google Play is unavailable.' instead of 'Store unavailable', and the shop does NOT show shop-store-unavailable. Only the NEXT buy attempt (connect() is now false) shows 'Store unavailable' and the card. Expected: 'Store unavailable' + the card on the first pick.", "testID": "mock-option-unavailable / shop-store-unavailable", "priority": "MEDIUM"},
+      {"component": "ads.ts mockRewarded.load() + adsCore.runRewarded", "issue": "The mock outcome dialog is shown inside load(), so the 8 s AD_LOAD_TIMEOUT also counts the time a person takes to choose. If the tester waits more than 8 s before tapping 'Watch to the end', ad-unavailable-dialog appears while the mock dialog is still open, both stacked. A late 'complete' tap then does nothing: the run stays in the revive phase with no revive. Also, the mock dialog isn't dismissed when the timeout fires. Reproduce: crash → Watch Ad → Try again on the unavailable dialog → wait 10 s → tap complete.", "testID": "mock-dialog / ad-unavailable-dialog", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Revive panel / Game Over (390 px)", "issues": ["The 'WATCH AD · REVIVE' label is truncated to 'WATCH AD · REVI…'", "The 'REWARD ALREADY CLAIMED' label is truncated to 'REWARD ALREAD…'"]},
+      {"screen": "Shop", "issues": ["Tab chips (shop-tab-*) are 36 px tall, below the 44 px minimum touch target"]}
+    ],
+    "react_native_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_phase4_live_api.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "Mock billing 'unavailable': return a result that maps to {kind:'store_unavailable'}, e.g. a status 'unavailable' that BillingEngine maps, so the first pick shows 'Store unavailable' and setPrices(null) shows shop-store-unavailable",
+    "Mock rewarded: don't let the 8 s load timer include the time spent picking. Either ask the mock outcome before runRewarded starts the timer (resolve load() immediately unless 'timeout' or 'fail' is picked), or start the timer only after the pick. When the timeout fires, dismiss the open mock dialog (mockBus.answer).",
+    "Check the native purchase flow: BillingEngine's 30 s PURCHASE_TIMEOUT starts before the Play purchase sheet opens. A real user who takes more than 30 s on the sheet would see 'Purchase failed — Nothing was charged' and could still be charged afterwards (it is granted later via onLatePurchase). Consider timing out only on a missing connection or launch, not on user time in the sheet.",
+    "Shorten or resize the Watch Ad / Reward already claimed labels so they fit at 390 px; make the shop tab chips at least 44 px tall"
+  ],
+  "critical_code_review_comments": [
+    "mockBus.ask resolves any dialog already open with its LAST option. For a purchase dialog that is 'unavailable', which sets storeDown=true as a side effect. This only matters if two asks overlap.",
+    "The /api/v1/ads/reward server dedupe and the Idempotency-Key replay work (verified live). An unlock replay with the same key returns the same progress."
+  ],
+  "updated_files": ["/app/backend/tests/test_phase4_live_api.py"],
+  "success_rate": {"backend": "100% (63/63)", "frontend": "~94% (2 mock-adapter bugs out of ~35 checks)"},
+  "seed_data_creation": "Mock purchases on player@rushrivals.test (gems increased by the test buys) and TEST_dev_* guest device entitlements",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Onboarding flow: onboarding-next-welcome → next-language → age-over13/under13 → terms-checkbox → accept-terms → next-permissions → intro-skip → name-input + next-name → claim-gift → tutorial-skip-button → get-started-button → main-menu. Local monetization state is in localStorage 'rr.monetization.v1' (a double-JSON-encoded string). Seed ad.completedRuns there and reload to spot-check interstitials. Escape doesn't go back on Shop (no useBackAction there; that is by design). Set EXPO_PUBLIC_BACKEND_URL in the shell before running pytest (test_health.py needs it).",
+  "rca_of_issue": "Bug 2 RCA: runRewarded races adapter.load() against an 8 s timer, and mockRewarded.load() awaits mockBus.ask(), the human pick. So decision time counts as load time. After the timeout, the mock dialog's promise is orphaned and the pick is ignored."
+}

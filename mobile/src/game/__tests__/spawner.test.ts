@@ -1,7 +1,7 @@
 /// <reference types="jest" />
 import { speedAt, TUNING } from "../constants";
 import { GameEngine } from "../engine";
-import { isPassableCell, isRowAvoidable, projectedSpeed, requiredGap, Spawner } from "../spawner";
+import { isLanePassable, isRowAvoidable, projectedSpeed, requiredGap, Spawner } from "../spawner";
 import type { Row } from "../types";
 
 describe("spawner fairness (Q-3)", () => {
@@ -12,6 +12,8 @@ describe("spawner fairness (Q-3)", () => {
     let prev: Row | null = null;
     const kinds = new Set<string>();
     let t = 0;
+    let movingRows = 0;
+    let roofRows = 0;
     for (let i = 0; i < 10000; i++) {
       const speed = speedAt(t);
       const distance = i * 30;
@@ -23,13 +25,17 @@ describe("spawner fairness (Q-3)", () => {
         if (gap < requiredGap(projectedSpeed(speedAt(t - 1)))) shortGaps++;
       }
       // coins only in lanes passable for this row
-      for (const c of coins) expect(isPassableCell(row.cells[c.lane + 1])).toBe(true);
+      for (const c of coins) expect(isLanePassable(row, c.lane + 1)).toBe(true);
+      if (row.moving.some(Boolean)) movingRows++;
+      if (row.cells.every((c) => c === "train")) roofRows++;
       prev = row;
       t += 1;
     }
     expect(unavoidable).toBe(0);
     expect(shortGaps).toBe(0);
     expect([...kinds].sort()).toEqual(["high", "low", "train"]);
+    expect(movingRows).toBeGreaterThan(100);
+    expect(roofRows).toBeGreaterThan(100); // roof-only rows exist and are counted as avoidable via ramp
   });
 
   it("is deterministic per seed", () => {
@@ -44,7 +50,8 @@ function autopilot(e: GameEngine) {
   const p = e.player;
   const next = e.rows.find((r) => r.z + r.length > e.distance - TUNING.playerHalfDepth);
   if (!next) return;
-  const score = (i: number) => (next.cells[i] === null ? 0 : next.cells[i] === "train" ? 99 : 1);
+  const score = (i: number) =>
+    next.cells[i] === null ? 0 : next.cells[i] !== "train" ? 1 : next.ramps[i] && !next.moving[i] ? 2 : 99;
   let best = 0;
   for (let i = 0; i < 3; i++) {
     const cand = score(i) * 10 + Math.abs(i - 1 - p.lane);
@@ -64,7 +71,7 @@ function autopilot(e: GameEngine) {
 
 describe("full simulation with autopilot (JRN-15)", () => {
   it.each([1, 2, 3, 42, 999])("seed %i survives 4 minutes, reaching capped speed", (seed) => {
-    const e = new GameEngine(seed);
+    const e = new GameEngine(seed, { powerups: false });
     const dt = 1 / 60;
     for (let i = 0; i < 60 * 240 && !e.crashed; i++) {
       autopilot(e);

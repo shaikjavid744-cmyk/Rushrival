@@ -1,0 +1,45 @@
+{
+  "summary": "Iteration 8 retest of the iteration 7 fixes. Backend: full suite 40/41 on the first run. The one failure was spotcheck test_auth_429 (13 straight 401s, no 429); it then passed in 2 reruns and 5 manual probes, so it's flaky. Added test_phase3_iter8_retest.py: revive pricing 5→10→revive_limit with the ref suffix ignored, idempotent replay, and 13 logins with rotating spoofed XFF hitting 429 on the 11th. All pass. Frontend: 3 Playwright scripts at 390x844 on the Expo web preview, 31/31 checks pass. Covered: first run from menu Play calls /runs/start + /runs/finish (no /runs/offline), with the score in db.scores and on the daily leaderboard; the Synced toast; sign-out resets the wallet to 0/0; a fresh account B gets 0/0 (none of A's 2000/50); deleting an account resets the wallet (gems 60→0); after sign-out or delete only one menu is in the stack and Escape opens the exit dialog; 4 bottom buttons 72x72 fit within 390px with nothing clipped (English and Hindi); the cloud account button (44x44) is in the top bar; Hindi labels इवेंट/खाता/लीडरबोर्ड; signed-out leaderboard shows the sign-in card and personal bests (empty state, then best-1 after a guest run); the event claim button is disabled with 'Reach 50 to claim'; the maintenance screen offers Play offline and Retry, and an offline run completes; the update banner shows Update now/Later and Later dismisses it; guest runs make no /runs calls. Remote config reset to maintenance false, 1.0.0/1.0.0.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/v1/auth/login (rate limiter)", "issue": "Flaky: in the full-suite run, 13 logins from one real IP returned 401 x13 with no 429. It then passed 2/2 reruns and 5/5 probes. A likely cause is that egress/ingress chains of different lengths make the fwd[-3] key vary. Also, when XFF has fewer than 3 entries the code falls back to request.client.host (the LB IP), so all such clients share one bucket. Consider logging the computed key to confirm."},
+      {"endpoint": "POST /api/v1/me/spend (revive)", "issue": "The revive count is keyed on the client-supplied run part of ref and isn't tied to a server-issued run/run_token. A client can rotate the run id to always pay 5 gems and get unlimited revives (it pays each time, so no currency gain)."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Server-side wallet change while app is open/reloaded", "issue": "After a direct server wallet change (mongo), a reload of /menu still showed the old local wallet (0/0 instead of 777/7). /me isn't re-fetched on launch, so the server wallet only reconciles after a run, sync or link. Low priority.", "affected_testIDs": ["menu-coin-balance-value", "menu-gem-balance-value"]}
+    ],
+    "design_issues": [
+      {"screen": "Menu (Hindi)", "issues": ["The 'सर्वश्रेष्ठ' best label is uppercase-styled and letter-spaced, which breaks the Devanagari shaping. Its muted colour is also low-contrast on the sky background."]}
+    ],
+    "react_native_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_phase3_iter8_retest.py",
+    "/app/tests/rr3d/p3e_iter8_retest.py",
+    "/app/tests/rr3d/p3f_iter8_config_lang.py",
+    "/app/tests/rr3d/p3g_signout_back.py",
+    "/app/test_reports/pytest/iter8_all.xml"
+  ],
+  "action_items": [
+    "Low: investigate the flaky auth 429 (log client_ip key and XFF length) and decide the behaviour when XFF has fewer than TRUSTED_PROXY_HOPS entries",
+    "Low: bind revive pricing to a server-issued run (run_token/run_id from /runs/start) rather than to a free-form ref",
+    "Low: refresh /me on app launch when signed in, so server-side wallet changes show up",
+    "Cosmetic: remove uppercase/letter-spacing for the Best label in Indic languages"
+  ],
+  "critical_code_review_comments": [
+    "online.clearSession() → onSignedOut resets coins/gems/hoverboards/owned/equipped to defaultSave(). As a side effect, a guest's own pre-sign-in onboarding gift (2000/50) is gone after sign-out. This is by design per the spec, but worth a UX note.",
+    "Maintenance 'Play offline' only hides the gate; signed-in online calls (/runs/start etc.) still go out during maintenance.",
+    "uvicorn --reload watches backend/tests, so adding test files restarts the backend and clears the in-memory limiter. The limiter is also per-process, so it won't hold with more than one worker."
+  ],
+  "updated_files": ["/app/backend/tests/test_phase3_iter8_retest.py", "/app/tests/rr3d/p3e_iter8_retest.py", "/app/tests/rr3d/p3f_iter8_config_lang.py", "/app/tests/rr3d/p3g_signout_back.py"],
+  "success_rate": {"backend": "97.6% (40/41; the 1 failure is flaky, passes on rerun)", "frontend": "100% (31/31 checks)"},
+  "seed_data_creation": "Temporary TEST_ accounts were registered and deleted (B, C, and the pytest user). Player had one online run added (score 495). Remote config was toggled and then reset.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run the backend suite with EXPO_PUBLIC_BACKEND_URL exported (test_health needs it). The auth limiter is a real 10/min per real IP, so sleep 61s between auth-heavy groups. p3e/p3f/p3g are self-contained: each onboards fresh and needs no storage state. p3f toggles db.remote_config and resets it in finally.",
+  "rca_of_issue": "All 3 iteration 7 issues are verified fixed. First run: the RunScreen mount effect calls online.startRun. Duplication: the onSignedOut reset means B gets {coins:0, gems:0}. XFF: fwd[-3] is used, and rotating spoofed XFF gets 429 on the 11th."
+}

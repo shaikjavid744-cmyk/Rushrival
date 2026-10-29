@@ -1,0 +1,37 @@
+{
+  "summary": "Mobile-only (375x667) Playwright testing of Phase 2 gap list: onboarding->tutorial->get-started->menu, 7-step frozen tutorial, skip/replay, rig animation/jump/slide/freeze/character colours, /dev-rig, scheduled roof routes, 7 languages + persistence, toast dismissal, revive 5/10 regression, pause/game over/banking/reload. All requested flows PASS. One layout bug fixed (Settings 'Replay tutorial' button collapsed to 0 height on web). Minor issues listed below.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Settings Replay tutorial button", "issue": "FIXED by tester: style {flex:0} on RN-web resolved to flex-basis 0% so the button collapsed to a 4px line with its label overlapping the Help/Privacy/Terms row. Replaced with flexGrow:0/flexShrink:0/flexBasis:'auto' -> now 351x48.", "testID": "settings-replay-tutorial", "priority": "MEDIUM (fixed)"}
+    ],
+    "integration_issues": [
+      {"flow": "Roof route scheduling", "issue": "Interval uses spawn-time projected speed, so the 1st->2nd scheduled roof route gap was ~10 s of game time (z=306 -> z=433 m, speed ~12 m/s), below the 15-25 s spec. Later gaps were ~14.5, 17, 20 s. Observed roof z: 306,433,625,894,1243,1625,2174,2600.", "affected_testIDs": []}
+    ],
+    "design_issues": [
+      {"screen": "Run HUD", "issues": ["'Double-tap: board x3' hint is shown in the tutorial even though double-tap is disabled there; on the right it is partly hidden behind/under the coin pill and has low contrast over the buildings", "Dev FPS text (green) overlaps the power-up timer pill when a power-up is active (dev only)"]},
+      {"screen": "Main Menu (Tamil/Malayalam)", "issues": ["Long translated labels (e.g. கதாபாத்திரங்கள்) render very small inside the square buttons; consider allowing 2 lines or a min font size"]},
+      {"screen": "/dev-rig", "issues": ["At 375px width only 6 of the 16 pose columns are visible and there is no horizontal scroll (full 6x16 grid confirmed at 1920px). Dev only."]},
+      {"screen": "Characters/Run", "issues": ["The 'Shadow' character (black outfit, dark head) has low contrast on the dark navy track/background"]}
+    ],
+    "react_native_issues": []
+  },
+  "test_report_links": [".screenshots/ (tut_hint, tut_done, getstarted, run_0..2, jump, slide, roof_sched, roof_end, zoe_run, devrig_wide, revive1, revive2, menu_ta, settings_replay)"],
+  "action_items": [
+    "Roof schedule: compute the next-roof gap from the speed the runner will have when reaching the row (or use time), so the first gap after 30 s is >=15 s",
+    "Hide the 'Double-tap: board' HUD hint in the tutorial and fix its overlap/contrast with the coin pill",
+    "Optional: improve long translated labels on the menu square buttons; make /dev-rig horizontally scrollable on narrow screens; raise Shadow character contrast (rim light/outline)"
+  ],
+  "critical_code_review_comments": [
+    "tutorial.tsx: the onExit replay path uses router.back() only when canGoBack(); otherwise it goes to /get-started, so a replay opened by deep link /tutorial?replay=1 after a reload shows get-started. That is acceptable.",
+    "Deep-link reload (e.g. /collection/boards) keeps the save but BootGate lands on /menu, not the original route. Not a regression, just noting it.",
+    "RunScreen __RR_DEBUG__ now also exposes a dev-only 'engine' getter (added by tester for roof-route inspection)"
+  ],
+  "updated_files": ["/app/mobile/app/settings.tsx (Replay tutorial button flex fix)", "/app/mobile/src/game/RunScreen.tsx (dev-only __RR_DEBUG__.engine getter)"],
+  "success_rate": {"backend": "N/A (skipped)", "frontend": "100% of requested flows pass (1 layout bug fixed, 1 minor spec deviation in roof interval)"},
+  "seed_data_creation": "None; each browser context started fresh in onboarding",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Fresh contexts start in onboarding: next-welcome -> age-over13 -> accept-terms -> name -> next-name -> next-how -> claim-gift -> /tutorial. Use tutorial-skip-button -> get-started-button to reach the menu quickly. Onboarding language chips are onboarding-lang-<id>, and the Settings ones are language-<id>. Menu buttons are menu-*-button. To find scheduled roof rows, use window.__RR_DEBUG__.engine.obstacles.items and group active non-moving trains by z (3 per row, with ramp=true on at least one). The first roof is at about z=305 m. Revive panel text is animated, so read it with textContent instead of inner_text.",
+  "rca_of_issue": "Replay tutorial collapse: on react-native-web, flex:0 expands to flex:0 0 0%. In a column ScrollView content container the height:48 is then overridden by the 0 basis. Fix: use flexBasis:'auto'."
+}

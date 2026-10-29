@@ -1,0 +1,34 @@
+{
+  "summary": "Iteration 6 retest on the Expo web preview, using Chromium with swiftshader at 390x844 and 360x640. (1) Fixed: the 3D scene fills the whole screen for Low/Medium at DPR 2, High/Low at DPR 3 and High at DPR 1. The GL viewport equals the canvas buffer in every case (e.g. 1170x2532 at DPR 3), and screenshots show the full scene in every grid cell. (2) Fixed after my one-line patch: with WebGL disabled there is no crash and no ErrorBoundary, run-no-graphics is shown, the HUD is hidden, and the sim stays frozen. However, the run-loading 'Preparing track...' overlay covered the panel and blocked run-no-graphics-home, so the button could not be tapped. I patched this and then verified that Back to menu returns to main-menu, including a second entry and exit. I also found and fixed a WebGL context leak: Run3DView's webGL2Available() probe ran on every render, which produced 'Too many active WebGL contexts. Oldest context will be lost' warnings. After the fix there are 0 such warnings. Regression passes: run-3d-view is present and run-2d-canvas is absent, lanes, jump y=1.78, slide, roof y=2.6 via placeTrainAhead, pause/resume, crash and death animation, revive-panel, decline, game over (+8 coins banked), Play Again, Home and a rerun, buying and equipping Shadow, and the full 7-step tutorial in 3D. Jest is 99/99. No page errors. Visual checks: the runner has only the round blob shadow, coins are bright gold, and the slide stays tucked until the slide ends. Shadow's body is lighter. 'Leaderboard' is 10.5px and on one line at 390 and 360 widths. At 360x640 the hero sits below the logo, and there are 0 element overlaps.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "RunScreen no-WebGL panel", "issue": "FIXED BY T1: `sprites` never loads without WebGL, so the LoadingOverlay 'Preparing track...' (testID run-loading) rendered on top of run-no-graphics. It blocked taps on run-no-graphics-home, and Playwright reported that run-loading intercepts pointer events. Fix: in the sprites ternary, `) : noGL ? null : (<LoadingOverlay .../>)`.", "testID": "run-no-graphics-home", "priority": "HIGH (fixed)"},
+      {"component": "Run3DView webGL2Available", "issue": "FIXED BY T1: `useRef(webGL2Available()).current` evaluates its argument on every render. Each HUD re-render created a new WebGL2 context, and Chrome logged 'Too many active WebGL contexts. Oldest context will be lost' dozens of times per run. This risks the game's own GL context being lost. Fix: cache the probe in a module-level variable and release the probe context with WEBGL_lose_context.", "testID": "run-3d-view", "priority": "HIGH (fixed)"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Run (3D)", "issues": [
+        "Slide: the end of the slide is fixed (tucked through 700 ms). But for the first ~200 ms of the 750 ms slide the runner still looks upright while the hitbox is already low (clock frames at 100 and 200 ms). Consider starting the Roll action at a time offset, or using a faster blend-in.",
+        "Shadow (Low gfx, DPR 1): the body is lighter and readable. The hood rim and the back drape are hard to make out at this resolution, and the hood still reads mostly as a dark dome."
+      ]}
+    ],
+    "react_native_issues": []
+  },
+  "test_report_links": ["/app/tests/rr3d/t10_dpr_tiers.py", "/app/tests/rr3d/t11_nowebgl_msg.py", "/app/tests/rr3d/t1_menu.py", "/app/tests/rr3d/t2_run.py", "/app/tests/rr3d/t3_chars_gfx_tutorial.py", "/app/tests/rr3d/t6_roll_clock.py"],
+  "action_items": [
+    "Review and keep T1's two fixes (RunScreen.tsx LoadingOverlay is suppressed when noGL; Run3DView.tsx probes WebGL2 once).",
+    "Optional polish: make the runner dip faster at the start of the slide (Roll action start offset); make the Shadow hood rim and drape stand out more at Low graphics."
+  ],
+  "critical_code_review_comments": [
+    "The useRef(expensiveFn()) pattern runs expensiveFn on every render. Use useState(() => fn()) or a module cache.",
+    "On native, Run3DView's GLBoundary/onFail path for a Skia fallback could not be tested on web (WebGL-less web shows the message instead, as designed)."
+  ],
+  "updated_files": ["/app/mobile/src/game/RunScreen.tsx", "/app/mobile/src/game/three/Run3DView.tsx", "/app/tests/rr3d/t10_dpr_tiers.py", "/app/tests/rr3d/t11_nowebgl_msg.py"],
+  "success_rate": {"backend": "N/A (mobile only)", "frontend": "100% after the 2 T1 fixes (2 bugs found and fixed)"},
+  "seed_data_creation": "Reused the /tmp/t5 storage states (onboarded profile 'Ace'). t3 grants dev currency and buys Shadow.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run the scripts with RR_URL=<EXPO_PACKAGER_PROXY_URL>. They need the /tmp/t5/state.json and state2.json files, which t1_menu.py and t2_run.py generate. t10 accepts args like low:2 high:3. Use the swiftshader flags. Headless FPS is about 5-17, so use page.clock for pose checks.",
+  "rca_of_issue": "No-WebGL: the noGL panel was added, but the else-branch LoadingOverlay (shown while sprites is null) still rendered above it, because Skia images never load without CanvasKit/WebGL. Context leak: the useRef initial value is evaluated on each render."
+}

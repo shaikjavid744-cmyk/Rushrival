@@ -31,7 +31,7 @@ export function ToastMessage({ message, variant = "info", duration = 3500, onHid
     <Animated.View
       entering={SlideInUp.springify().damping(18)}
       exiting={SlideOutUp}
-      style={[s.toast, { top: insets.top + spacing.sm, borderColor: accent }]}
+      style={[s.toast, { top: insets.top + 72, borderColor: accent }]}
       testID="toast-message"
       accessibilityRole="alert"
       accessibilityLiveRegion="polite"

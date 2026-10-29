@@ -1,0 +1,51 @@
+{
+  "summary": "First Phase 3 E2E pass. Backend: 2 new pytest files (16 tests). 15 pass. 1 real failure: the rate limit can be bypassed by spoofing X-Forwarded-For. Mobile: 4 Playwright scripts at 390x844, about 50 checks. Phase 2 onboarding still reaches the menu. These work: account sign-in/register/forgot/reset, conflict dialog, sign-out, typed-DELETE deletion, Google redirect, child mode, events, inbox claim-once, server missions, support ticket, leaderboard tabs/own-rank highlight/report/offline Retry, offline queue + sync-failed banner + flush with Synced toast, maintenance/update-required/update-available gates, and guest offline play. Found 2 HIGH bugs: (1) the first run started with Play from the menu never calls /runs/start, so it is sent as /runs/offline and never reaches the leaderboard (only Play again does); (2) currency is duplicated across accounts, because sign-out keeps the cloud wallet on the device and the next account linked or registered uploads it.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "auth_rate / gameplay limiter (rr/core.py client_ip)", "issue": "client_ip uses the first X-Forwarded-For entry, and the client controls that value. Sending a different XFF on each request avoids the limit: 13 logins in a row all returned 401 and none returned 429. Use the last (ingress-appended) hop or a trusted-proxy count.", "priority": "HIGH"},
+      {"endpoint": "POST /api/v1/me/link (with client sign-out)", "issue": "Currency is duplicated across accounts. Steps: sign in to account A (5555 coins) → Keep cloud → sign out (the device keeps 5555) → sign in to fresh account B (progress_initialized=false) → the device wallet is SET on B. B ended up with 5555 coins and 33 gems, and the ledger shows a link_device_progress entry. Registering a new account after sign-out does the same.", "priority": "CRITICAL"}
+    ],
+    "minor": [
+      {"endpoint": "POST /api/v1/me/spend sink=revive", "issue": "The revive price index comes from the client-chosen ref suffix (':1' = 10 gems). The client can always pay 5 gems, and the ref isn't tied to a real run_id."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "src/game/RunScreen.tsx", "issue": "online.startRun() is only called inside the startRun callback (Play again/restart). The first run entered from menu Play starts in the 'countdown' phase without it, so recordRun has no started token and enqueues /runs/offline. Result: the run is off the leaderboard, coins are capped and event progress is not tracked. Verified by network capture: run 1 → only POST /runs/offline; Play again → /runs/start + /runs/finish 200.", "testID": "play-button", "priority": "HIGH"},
+      {"component": "menu bottom bar (app/menu.tsx s.bar)", "issue": "The 5 square buttons overflow at 390px wide. 'Leaderboard' is clipped at the left edge and 'Inbox' at the right edge.", "testID": "menu-leaderboard-button / menu-inbox-button", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [
+      {"flow": "Sign out → sign in to another account / register", "issue": "Sign-out doesn't restore guest progress or clear the cloud-derived wallet, which leads to the cross-account duplication described above.", "affected_testIDs": ["account-sign-out", "link-keep-cloud"]},
+      {"flow": "Maintenance gate (JRN-55)", "issue": "The Maintenance screen covers the whole app and only has Retry. There is no 'Play offline' option, so guests and offline play are blocked during maintenance.", "affected_testIDs": ["maintenance-screen"]}
+    ],
+    "design_issues": [
+      {"screen": "Menu", "issues": ["The Events and Daily buttons use the same calendar icon", "The 'Events'/'Account' labels are hard-coded and not localized with t()"]},
+      {"screen": "Update available banner", "issues": ["Actions are 'Update' plus an X icon; JRN-56 expects 'Update now' / 'Later'"]},
+      {"screen": "Leaderboard (signed out)", "issues": ["Shows the global list with a sign-in CTA. JRN-57 expects 'Sign in and go online to see global rankings' plus personal bests"]},
+      {"screen": "Events", "issues": ["The Claim button is hidden until the target is reached instead of shown disabled"]}
+    ],
+    "react_native_issues": [
+      {"component": "signOut / deleteAccount (router.replace('/menu'))", "issue": "Two main-menu screens end up in the DOM/stack after sign-out (Playwright strict-mode found 2 [data-testid=main-menu]), so Back may lead to another menu. Use router.dismissAll() or a similar call."}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_phase3_spotcheck.py", "/app/backend/tests/test_phase3_economy_extra.py", "/app/tests/rr3d/p3_common.py", "/app/tests/rr3d/p3a_account_online.py", "/app/tests/rr3d/p3b_run_sync.py", "/app/tests/rr3d/p3c_play_again_online.py", "/app/tests/rr3d/p3d_child_delete_config_guest.py", "/app/tests/rr3d/p3_rival_score.py", "/app/test_reports/pytest/phase3_spot.xml"],
+  "action_items": [
+    "HIGH: call online.startRun(engine.runId, world) for the first run too, on mount or in onCountdownDone, unless it is a tutorial",
+    "CRITICAL: stop cross-account currency duplication. On sign-out, restore or snapshot the pre-sign-in guest wallet (or reset the cloud-derived balances). Alternatively, never upload a device wallet whose values came from another account",
+    "HIGH: rate limiter must not trust a client-supplied X-Forwarded-For first hop",
+    "Fix the menu bottom-bar overflow at 390px (5 buttons)",
+    "Maintenance screen: add 'Play offline' and let gameplay continue",
+    "Minor: Update banner 'Update now'/'Later'; signed-out leaderboard copy and personal bests; render the event Claim button disabled; give revive pricing a server-side per-run count"
+  ],
+  "critical_code_review_comments": [
+    "plausibility() rejects duration > server_elapsed+10, so a run is only valid if /runs/start finished before the countdown. If /runs/start is slow or fails, the run is silently downgraded to offline",
+    "AccountProvider.linkProgress sends save.coins/gems from whatever the device currently shows, which may be another account's cloud values"
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "94% (15/16; 1 real security failure: XFF rate-limit bypass)", "frontend": "~94% (46/49 checks; failures: first-run not online, no 'Play offline' on maintenance, menu bar overflow seen in screenshot)"},
+  "seed_data_creation": "Rival got one online daily score of 520 (p3_rival_score.py). Player has online daily score 560, msg_welcome_online claimed and 1 report against Rival. 2 support tickets were created. Player wallet reset to 0/0/0 and progress_initialized=false after the duplication test. Throwaway accounts deleted. Remote config reset to maintenance=false, min 1.0.0, latest 1.0.0. EXPOSE_RESET_CODE_FOR_TESTS was not used.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Run the rr3d p3*.py scripts with python directly. The URL is read from mobile/.env; they use the swiftshader flags. p3a builds /tmp/p3/state_player.json, which p3b/p3c/p3d need. p3a needs /tmp/p3/conf_email, an account registered via the API with progress_initialized=true and a wallet set in mongo (it exercises the conflict dialog). Use [data-testid=X]:visible selectors because the expo-router stack keeps hidden screens in the DOM. The auth rate limit is per XFF IP, so tests send unique X-Forwarded-For headers.",
+  "rca_of_issue": "Online run bug: RunScreen's initial phase is 'countdown' with the engine created on mount. online.startRun only runs in the startRun callback used by Play again/Restart, so online.runs has no entry for the first runId and recordRun falls back to /runs/offline. Duplication: signOut → online.clearSession() only clears tokens/queue and leaves the GameProvider save (already overwritten by onServerUser with the cloud wallet). The next /me/link for an account with progress_initialized=false takes the 'device' branch and $sets that wallet."
+}

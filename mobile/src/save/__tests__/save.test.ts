@@ -71,7 +71,7 @@ describe("save load / migration / corruption", () => {
 
   it("round trip keeps best score, coins, stats and settings (Q-5)", async () => {
     const kv = memKV();
-    const d = { ...defaultSave(), bestScore: 999, coins: 42, settings: { sound: false, vibration: false, accessibilityButtons: true } };
+    const d = { ...defaultSave(), bestScore: 999, coins: 42, settings: { ...defaultSave().settings, sound: false, vibration: false, accessibilityButtons: true } };
     d.stats.totalRuns = 3;
     expect(await writeSave(kv, d)).toBe(true);
     expect(kv.m.has(SAVE_KEYS.tmp)).toBe(false); // temp swapped away

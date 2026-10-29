@@ -7,6 +7,11 @@ import { LogBox, StyleSheet, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 import { ErrorBoundary } from "@/src/components/error-boundary";
+import { NetworkStatus } from "@/src/components/ui/NetworkStatus";
+import { BootGate } from "@/src/state/BootGate";
+import { AccountProvider } from "@/src/online/AccountProvider";
+import { RemoteConfigGate } from "@/src/online/RemoteConfigGate";
+import { MonetizationHost } from "@/src/monetization/MonetizationHost";
 import { GameProvider } from "@/src/state/GameProvider";
 import { colors } from "@/src/theme";
 
@@ -32,7 +37,13 @@ export default function RootLayout() {
       <ErrorBoundary>
         {loaded || error ? (
           <GameProvider>
-            <Stack screenOptions={{ headerShown: false, animation: "fade", contentStyle: { backgroundColor: colors.surface } }} />
+            <AccountProvider>
+              <Stack screenOptions={{ headerShown: false, animation: "fade", contentStyle: { backgroundColor: colors.surface } }} />
+              <BootGate />
+              <NetworkStatus />
+              <RemoteConfigGate />
+              <MonetizationHost />
+            </AccountProvider>
           </GameProvider>
         ) : (
           <View style={styles.root} />

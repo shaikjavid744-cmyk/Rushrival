@@ -1,0 +1,42 @@
+{
+  "summary": "Tested the three.js/expo-gl 3D runner on the Expo web preview using Chromium with swiftshader WebGL, at 390x844 (DPR 1/2/3) and 360x640. Each requested flow passes at DPR 1: onboarding to menu, the front-facing 3/4 hero, the one-line 'Leaderboard' label, the 3D view active with no Skia canvas, lanes, jump, roll, the train roof (y=2.6), pause/resume, the crash death animation, revive ('Watch ad — Available soon') to game over, Play Again with coin banking (2000 -> 2028), Home then a new run, buying and equipping Shadow (black outfit in 3D, and the menu hero changes too), Graphics Low, and the full 7-step tutorial replay in 3D. Jest is 99/99. Backend pytest is 3/3 and /api/health is OK. No page errors. I found 2 real bugs: (1) on web, the 3D scene draws into only part of the screen when devicePixelRatio is higher than the graphics-tier ratio; (2) the Skia 2D fallback never runs when WebGL is missing, because GLView throws during render and the app shows the ErrorBoundary screen instead.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "ThreeRenderer / Run3DView (web)", "issue": "When devicePixelRatio is higher than the cfg.ratio cap (Low=1, Medium=1.5, High=2), the 3D scene fills only the bottom-left part of the screen. The rest stays light blue. Low at DPR 2 draws 1/4 of the screen. High at DPR 3 draws 2/3 of the width and height. Cause: expo-gl GLView.web sizes the canvas buffer to the CSS size times the device pixel ratio (measured 780x1688 at DPR 2), but ThreeRenderer calls setPixelRatio(min(dpr, cfg.ratio)) and then setSize(w, h, false). The three.js viewport is smaller than the drawing buffer. Native Android is not affected because it uses drawingBufferWidth/width. Screenshots: /tmp/t5/low_dpr2.png and /tmp/t5/head_full.png.", "testID": "run-3d-view", "priority": "HIGH (web preview at DPR >= 2 on Low/Medium, and DPR 3 on High)"},
+      {"component": "Run3DView fallback", "issue": "With WebGL disabled (--disable-webgl --disable-3d-apis), tapping Play crashes to the global ErrorBoundary ('Something went wrong — Browser does not support WebGL', testIDs error-fallback and error-fallback-reload). The Skia fallback never appears. GLView.web throws the invariant during mount, outside the onContextCreate try/catch, so onFail and the INIT_TIMEOUT never get a chance to run. Screenshot: /tmp/t5/nogl_run.png.", "testID": "run-3d-view / run-2d-canvas", "priority": "HIGH (the automatic fallback is a stated requirement)"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Run (3D)", "issues": [
+        "The runner has two shadows: the blob shadow plus a shadow-map silhouette offset to the right (High tier). It looks like a second dark figure next to the runner.",
+        "Coins look like soft brownish-gold blobs or smears at mid distance. They have low definition and little shine.",
+        "In the last ~40% of the 0.75 s slide, the Roll clip is already back in its stand-up pose while the engine still uses the low slide hitbox. Under high barriers the runner looks like it passes through them standing.",
+        "Shadow character: in 3D the hood reads as a plain black dome and there are no red sleeve stripes, unlike the menu art. Contrast against the dark track is still low.",
+        "'Double-tap: board x3' pill still overlaps under the coin pill area (carried over from iteration 4)."
+      ]},
+      {"screen": "Main Menu", "issues": ["The 'Leaderboard' label is on one line but uses a 9px font, which is hard to read on a phone.", "At 360x640 the hero's hair slightly overlaps the bottom of the RUSH RIVALS logo. No button overlaps were found."]}
+    ],
+    "react_native_issues": []
+  },
+  "test_report_links": ["/app/tests/rr3d/t1_menu.py", "/app/tests/rr3d/t2_run.py", "/app/tests/rr3d/t3_chars_gfx_tutorial.py", "/app/tests/rr3d/t4_roll_fallback.py", "/app/tests/rr3d/t5_probe.py", "/app/tests/rr3d/t6_roll_clock.py", "/app/tests/rr3d/t7_head.py", "/app/tests/rr3d/t8_dpr_low.py", "/app/tests/rr3d/t9_nowebgl.py", "/app/test_reports/pytest/pytest_results_iter5.xml"],
+  "action_items": [
+    "Fix the web pixel-ratio mismatch. Either apply the tier ratio by setting the canvas width and height yourself after GLView lays out (and stop GLView overriding it), or on web use ratio = gl.drawingBufferWidth / width like native and cut cost another way. Then retest Low/Medium/High at DPR 1, 2 and 3.",
+    "Make the Skia fallback really automatic. Wrap <Run3DView> in a local ErrorBoundary whose componentDidCatch calls onFail. On web, also pre-check WebGL before mounting GLView (canvas.getContext('webgl2') || getContext('webgl')).",
+    "On native, Graphics Low/Medium/High do not change render resolution, because the cfg.ratio cap is only used on web. Only shadows and draw distance change. Confirm this is intended.",
+    "Optional visuals: hide the blob shadow when shadow maps are on, or remove the shadow-map caster for the runner; improve the coin material (emissive/metalness); make the Roll clip end match the slide hitbox; add hood/stripe detail and a rim light for Shadow; bump the menu square-button label font to 10-11px."
+  ],
+  "critical_code_review_comments": [
+    "Run3DView: the try/catch in onContextCreate cannot catch errors GLView throws during mount, which is the fallback bug above.",
+    "Run3DView: look, palette and graphics are only read on the first context creation. That is fine for a run, but changing the equipped character mid-session needs a remount, and RunScreen does remount per run.",
+    "ThreeRenderer.render: the camera shake uses Math.random() every frame. Fine, but it is not deterministic for screenshots.",
+    "Headless note: with real-time screenshots, the Roll clip looked missing because each swiftshader screenshot takes longer than the 0.75 s slide. Using page.clock (pause_at / run_for) showed the full roll correctly. Use the fake clock for pose checks."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100% (3/3 pytest, /api/health ok)", "frontend": "~85%. All 10 requested flows pass at DPR 1; 2 HIGH bugs (web DPR viewport mismatch, broken Skia fallback without WebGL)"},
+  "seed_data_creation": "None in the DB. Browser-only saves: fresh onboarding saved to /tmp/t5/state.json and state2.json. The dev-grant-coins button was used to buy Shadow. state_low.json was made by editing the save (checksum recomputed with FNV-1a).",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Use local Python Playwright (not the browser_automation tool) with chromium args --use-gl=swiftshader --enable-unsafe-swiftshader. Reuse storage_state /tmp/t5/state2.json to skip onboarding (it may be gone after a reset). The rr_save_main localStorage value is a JSON string that holds the JSON envelope {v, sum, data}; sum is FNV-1a over JSON.stringify(data). Play Again testID: play-again-button. Home from pause: pause-home-button, then home-dialog-confirm. Purchase: item-<id>, then purchase-dialog-confirm. Graphics: graphics-low / graphics-medium / graphics-high. For animation poses, use page.clock.install() before goto, then pause_at and run_for(100) between screenshots. Test DPR 2 and 3 to catch the viewport bug.",
+  "rca_of_issue": "Bug 1 (partial 3D viewport on web): node_modules/expo-gl/build/GLView.web.js sizes canvas.width to the layout width times the device pixel ratio (measured 780x1688 at DPR 2). ThreeRenderer line 136 calls setPixelRatio(min(pixelRatio, cfg.ratio)) and line 137 calls setSize(w, h, false), so gl.viewport is w*ratio x h*ratio, smaller than the buffer. WebGL's origin is bottom-left, so only the bottom-left part is drawn. To reproduce: Settings > Graphics Low, DPR 2, Play. Bug 2 (no fallback): GLView.web throws 'Browser does not support WebGL' during mount, the global ErrorBoundary catches it, and RunScreen's render3d state never becomes 'failed'. To reproduce: launch Chromium with --disable-webgl --disable-3d-apis and tap Play."
+}

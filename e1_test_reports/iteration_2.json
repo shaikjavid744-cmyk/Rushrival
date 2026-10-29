@@ -1,0 +1,29 @@
+{
+ "iteration": 2,
+ "passed": 8,
+ "failed": 1,
+ "retest_needed": true,
+ "bugs": [
+  {"severity": "medium", "title": "Offline banner never appears on web when the network drops",
+   "evidence": "shop-info-offline-savefail: page.context().setOffline(true) -> navigator.onLine === false, but [data-testid=network-status-offline] never shows up (waited 30-45s; reproduced 3 runs). NetworkStatus.tsx only goes offline when NetInfo reports isConnected === false, and on web NetInfo does not report that here. Backend health check returned 200, so the backend is fine."},
+  {"severity": "medium", "title": "Pressing PLAY while offline (web dev) throws an uncaught 'Failed to fetch' error and the run never starts",
+   "evidence": "After going offline, clicking play-button never reached phase 'running' (waitForFunction timed out after 60s). The error overlay shows 'Uncaught Error: Failed to fetch' at JsiSkDataFactory.fromURI -> loadData, i.e. Skia loads images over the network and the failure is not caught. Console: ERR_INTERNET_DISCONNECTED x39, pageerror Failed to fetch x10. This may only affect the web dev server (native builds bundle their assets), but the unhandled error should fall back gracefully."}
+ ],
+ "action_items": [
+  {"type": "note", "detail": "The onboarding differs from the acceptance matrix. The build's steps are welcome+language -> age -> terms (one Accept button, no checkbox, so nothing for Continue to be disabled by) -> name -> how-to -> gift. There is no Permissions step and no skippable Intro. Everything else (7 languages, a single gift of 2,000/50/x3 that is not re-offered after reload or tutorial replay) passed."},
+  {"type": "note", "detail": "Hindi menu translation works (PLAY shows as 'खेलें'). Settings labels stay in English, which matches the partial-translation spec deviation."},
+  {"type": "note", "detail": "Older Phase 1 checks (launch-run-crash-bank, pause-confirm-back, corrupt-save-toggles) expect to land on the main menu from a fresh install. With Phase 2 onboarding that is no longer true, so they are stale and were not re-run. The Phase 1 pause/restart/game-over/play-again flow is now covered by layouts-no-dead-ends."},
+  {"type": "note", "detail": "Backend lane: the game saves locally on the device. No acceptance criterion depends on an API, so only the /api/health test was run."}
+ ],
+ "checks": [
+  {"criterion": "environment: backend health", "name": "test_tscheck_health.py", "lane": "backend", "status": "passed", "evidence": "GET /api/health 200 {status: ok}"},
+  {"criterion": "JRN-20/21/23/24 first launch + one-time gift", "name": "onboarding-gift-once", "lane": "browser", "status": "passed", "evidence": "langs en,hi,bn,ta,te,kn,ml; gift shows 2000/50/x3; menu 2,000 coins / 50 gems; after reload and tutorial replay still 2000/50 and the gift step is not shown"},
+  {"criterion": "JRN-22 interactive tutorial", "name": "tutorial-steps-complete", "lane": "browser", "status": "passed", "evidence": "7 steps (left,right,jump,slide,coins,avoid,powerup), each with a hint; a wrong key on jump did not advance; complete panel -> 'Meet your runner' -> menu; Skip covered in other checks"},
+  {"criterion": "JRN-25 power-ups + 3D run", "name": "run-3d-powerups", "lane": "browser", "status": "passed", "evidence": "run-3d-view rendered; double-tap hoverboard brought the count from 3 to 2 with a HUD timer; magnet/shield/speed/x2 timers plus x2 chip; placed coins collected; ramp train raised the runner to y=2.45 (roof)"},
+  {"criterion": "JRN-26/27/28 collection + economy", "name": "collection-purchase-economy", "lane": "browser", "status": "passed", "evidence": "Zoe at 2,000 coins: 'Not enough coins', confirm disabled, balance stays 2000; after granting 52,000, buying Zoe leaves 27,000 and Zoe is selected and used in the run; worlds show Lv 3/6/9/12/15 locks"},
+  {"criterion": "JRN-29/30/31/32/36 rewards idempotency", "name": "rewards-claim-once", "lane": "browser", "status": "passed", "evidence": "Day 1 claimed, then 'Come back tomorrow'; +2 days -> 'Claim Day 1' (streak reset); -5 days -> no claim plus clock warning, coins unchanged; m-pu-3 claimed once; inbox welcome claimed, shows 'Claimed', no second dialog, gems unchanged after reload"},
+  {"criterion": "JRN-33/34/35 profile, stats, settings, reset", "name": "profile-settings-reset", "lane": "browser", "status": "passed", "evidence": "name tscheckPro shows on the menu; Runs stat 0 -> 1 after a run; graphics low, music off, large text on, buttons on and Hindi all kept after reload; reset cancel keeps data, confirm goes back to onboarding welcome"},
+  {"criterion": "JRN-37/38/39/40 shop, info screens, offline, save failure", "name": "shop-info-offline-savefail", "lane": "browser", "status": "failed", "evidence": "Passed: gems-100 -> 'Store not available yet' with gems unchanged; leaderboard/help/privacy/terms open and go back; save failure shows banner 'Couldn't save progress — Retry' and Retry clears it. Failed: no offline banner, and PLAY offline throws 'Failed to fetch' (Skia fromURI)"},
+  {"criterion": "JRN-42/43 no dead ends + layouts", "name": "layouts-no-dead-ends", "lane": "browser", "status": "passed", "evidence": "At 360x640 and 412x915: menu/collections/shop/missions/inbox/daily have no horizontal overflow or stretched images and each back button works. Phase 1 pause/restart-cancel/resume, revive decline, game over, play again and Escape pause -> home confirm all work"}
+ ]
+}

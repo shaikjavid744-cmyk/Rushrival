@@ -1,0 +1,8 @@
+{"iteration":7,"mode":"retest","passed":4,"failed":0,"bugs":[],"action_items":[],"retest_needed":false,
+"checks":[
+{"criterion":"All backend suites","name":"e1_tests full suite","lane":"backend","status":"passed","evidence":"43 passed in 183s"},
+{"criterion":"JRN-80/81/89/90 website pages, catalog, SEO, 404","name":"site-pages-catalog-seo-404","lane":"browser","status":"passed","evidence":"Reran persisted: home 1440/390 no overflow, power-ups catalog, branded 404; no ErrorBoundary (scrollTo fix verified)"},
+{"criterion":"JRN-82/83 news empty + download honesty","name":"site-news-empty-download-honesty","lane":"browser","status":"passed","evidence":"Reran persisted: 'No news yet' empty state; 'Coming soon to Google Play', no button"},
+{"criterion":"JRN-84..88,91 contact, spam, errors, deletion, cookies","name":"site-contact-errors-deletion-cookies","lane":"browser","status":"passed","evidence":"Inline errors; mocked 500 shows 'Something went wrong' and keeps the message; retry gives RR- ticket; deletion request id shown; cookie reject persists across navigation. The first rerun hit the app's <3s anti-spam guard ('Please take a moment to fill in the form'), so the guard works. The check now waits 3.5s before submitting, like a real user would."}
+],
+"notes":["The persisted contact check had no saved URL (empty meta). It was re-saved with url http://localhost:3000/support"]}

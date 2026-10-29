@@ -87,3 +87,19 @@ mobile/.metro-cache/
 
 # overlay black-box crash/user-report dumps — session data, never history
 **/.emergent/recordings/
+
+# Release secrets (Phase 7) — never commit
+*.jks
+*.keystore
+*.p12
+*.p8
+*.aab
+*.apk
+google-services.json
+GoogleService-Info.plist
+*service-account*.json
+*service_account*.json
+play-*.json
+.env
+.env.*
+!.env.example

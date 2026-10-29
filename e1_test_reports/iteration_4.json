@@ -1,0 +1,30 @@
+{
+ "iteration": 4, "phase": "3",
+ "passed": 13, "failed": 1,
+ "bugs": [
+  {"severity": "medium", "criterion": "JRN-44/45/46", "title": "No 'Continue as guest' option after failed sign-in",
+   "evidence": "Wrong password shows 'Sign-in failed. Check your details and try again.' (account-error) but there is no 'Continue as guest' control on the Account screen (getByText(/Continue as guest/i) count=0; grep of /app/mobile/app and /app/mobile/src finds no such string). Only the header Back arrow is there. Backend is fine: POST /api/v1/auth/login with a wrong password -> 401 {error:{...}}. JRN-46 expects a 'Continue as guest' tap. Everything else in this check passed: duplicate email -> 'Email already registered', short password -> 'Password must be at least 8 characters', register links local progress (UI 2000 coins == GET /me wallet.coins 2000)."}
+ ],
+ "action_items": [
+  {"type": "note", "detail": "The auth matrix has no per-user resource route (no /users/{id}). The '403 for another user's resource' case was tested by submitting user A's run_token as user B, which is rejected with 400 run_invalid (token_mismatch). Add a 403 route if the spec requires one."},
+  {"type": "blocked_external", "detail": "Google sign-in completion (JRN-47) and password-reset email delivery (JRN-49) were not tested headless (external)."},
+  {"type": "note", "detail": "Remote config states were tested by intercepting GET /api/v1/config in the browser, so the seeded remote_config doc was never changed. The offline queue was tested with an offline daily claim; offline runs were covered in the backend (POST /runs/offline returns leaderboard:false)."}
+ ],
+ "retest_needed": true,
+ "checks": [
+  {"criterion": "JRN-44/45/46 register, validation, sign-in failure, guest linking", "name": "test_tscheck_auth_link.py", "lane": "backend", "status": "passed", "evidence": "register 201 -> /me/link 200 -> GET /me coins 777; dup email 409; short pw 4xx; wrong pw 401 {error}"},
+  {"criterion": "JRN-44/45/46 register, validation, sign-in failure, guest linking", "name": "account-register-link-errors", "lane": "browser", "status": "failed", "evidence": "All steps passed except that the 'Continue as guest' control is missing (count 0)"},
+  {"criterion": "JRN-48 conflict dialog", "name": "test_tscheck_auth_link.py::test_conflict_no_duplication", "lane": "backend", "status": "passed", "evidence": "409 progress_conflict; choice cloud -> 500, choice device -> 300 (values set, not added)"},
+  {"criterion": "JRN-48 conflict dialog", "name": "account-conflict-dialog", "lane": "browser", "status": "passed", "evidence": "dialog cloud 512 / device 2000; Keep cloud -> server coins 512, menu shows 512"},
+  {"criterion": "JRN-50/51 server-validated runs + anti-cheat", "name": "test_tscheck_runs.py", "lane": "backend", "status": "passed", "evidence": "finish 200 wallet +5 exactly; replay with same Idempotency-Key gives same body (replayed:true); new key with reused token 400 run_invalid; forged report 400 run_invalid; on leaderboard"},
+  {"criterion": "JRN-52/61 auth matrix + rate limit", "name": "test_tscheck_authz_rate.py", "lane": "backend", "status": "passed", "evidence": "no token 401 {error:{code,message}}; other user's run_token 400; 11th login with rotated spoofed XFF -> 429"},
+  {"criterion": "JRN-53/54 offline queue + service unavailable", "name": "offline-queue-sync", "lane": "browser", "status": "passed", "evidence": "offline daily claim -> 'Synced' toast on reconnect; UI 2200 == server 2200"},
+  {"criterion": "JRN-53/54 offline queue + service unavailable", "name": "service-unavailable-play", "lane": "browser", "status": "passed", "evidence": "API 503 -> leaderboard 'Service unavailable' + Retry, events-unavailable; PLAY starts a run"},
+  {"criterion": "JRN-55/56 remote config states", "name": "remote-config-states", "lane": "browser", "status": "passed", "evidence": "maintenance screen + Play offline works; min version -> Update required/Update now; latest -> dismissible banner"},
+  {"criterion": "JRN-57/58/60 leaderboard, events, inbox", "name": "test_tscheck_online_features.py", "lane": "backend", "status": "passed", "evidence": "daily/weekly/all 200, friends 422; event claim 200 then 409; inbox claim 200 then 4xx"},
+  {"criterion": "JRN-57/58/60 leaderboard, events, inbox", "name": "leaderboard-events-inbox", "lane": "browser", "status": "passed", "evidence": "signed-out sign-in message; signed in my-rank on all 3 tabs, no Friends; Temple Rush card; inbox message shown"},
+  {"criterion": "JRN-59/62/63 support, delete account, child mode", "name": "test_tscheck_support_delete.py", "lane": "backend", "status": "passed", "evidence": "ticket 201 RR-000009; delete without DELETE 400; with DELETE 200; login then 401"},
+  {"criterion": "JRN-59/62/63 support, delete account, child mode", "name": "support-delete-account", "lane": "browser", "status": "passed", "evidence": "delete disabled until DELETE typed; signed out; login 401; ticket RR-#### shown"},
+  {"criterion": "JRN-59/62/63 support, delete account, child mode", "name": "child-mode-no-signup", "lane": "browser", "status": "passed", "evidence": "under-13: no Create account tab and no Google button"}
+ ]
+}

@@ -1,0 +1,24 @@
+{
+  "_comment": "REFERENCE ONLY. On Emergent, /app/mobile/eas.json is platform-managed (Publish → build); it must not be hand-edited in this workspace. If you build yourself outside Emergent, copy this file to mobile/eas.json.",
+  "cli": { "version": ">= 16.0.0", "appVersionSource": "local" },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "android": { "buildType": "apk", "gradleCommand": ":app:assembleDebug" },
+      "env": { "APP_ENV": "development", "EXPO_PUBLIC_BACKEND_URL": "https://<dev-backend-host>" }
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": { "buildType": "apk" },
+      "env": { "APP_ENV": "development", "EXPO_PUBLIC_BACKEND_URL": "https://<staging-backend-host>" }
+    },
+    "production": {
+      "android": { "buildType": "app-bundle" },
+      "env": { "APP_ENV": "production", "EXPO_PUBLIC_BACKEND_URL": "https://<production-backend-host>" }
+    }
+  },
+  "submit": {
+    "production": { "android": { "serviceAccountKeyPath": "./play-service-account.json", "track": "internal", "releaseStatus": "draft" } }
+  }
+}

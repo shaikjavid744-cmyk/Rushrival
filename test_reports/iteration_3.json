@@ -1,0 +1,29 @@
+{
+  "summary": "Iteration 3: retested the iteration-2 fixes on the Expo web preview (390x844). Mobile only; backend and Jest were skipped as requested. The CRITICAL reload/deep-link data-loss bug is FIXED. A full reload on /settings, /shop, /collection/characters, /daily, /missions, /inbox, /profile, /help and /legal/terms each went to /menu with coins, gems and name unchanged (2,000 / 50 / TEST_Ace). In the exact repro (reload on /settings, try toggle-sound for 3 s, then open '/'), the boot-gate covers the screen, the toggle cannot be tapped, and '/' goes to /menu, not onboarding. The hoverboard is FIXED: a double-tap via touch events gives HUD x3->x2, Profile 'Power-ups used' 0->1 and m-pu-3 '1 / 3'. Inbox is FIXED: no nested buttons (0 found), the claim button sits outside inbox-open-welcome, there are no console errors, the dialog is full screen (390x844), and claiming gives +10 gems once ('Claimed'). The RewardDialog (inbox, shop) and RevivePanel render full screen. Onboarding icons are centered. Toasts sit below the header (header bottom 65, toast top 72). The Leo and Galaxy 'Soon' chips fit on one line. Regression passed: onboarding, all 13 menu buttons, dev-grant (+50k/+500), buy Zoe (52,000->27,000, selected), daily Day 1 +200, shop hb-3 (+3 boards), revive 5 then 10 gems then straight to game over (gems 50->35), coins banked once (2000+16=2016, also after a reload). Only open item: the graphics/language segments still do not expose their selected state on web.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Settings", "issues": ["The graphics-* and language-* segments render role=radio but no aria-checked or aria-selected. react-native-web 0.21.4 ignores the accessibilityState object. Pass aria-checked={value===o.v} (and/or aria-selected) directly in settings.tsx line 26. The same applies to accessibilityState in the inbox (expanded), collection tabs (selected) and onboarding language chips."]},
+      {"screen": "All sub-screens", "issues": ["Toasts persist across navigation. For example, the onboarding gift toast still shows on Inbox and the daily toast on Shop, and they cover the first list row for a few seconds. Low priority."]}
+    ],
+    "react_native_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "LOW: settings.tsx segments (and other accessibilityState usages): add aria-checked / aria-selected / aria-expanded props so the state is exposed on web (RNW 0.21).",
+    "LOW (optional): clear or shorten toasts on route change."
+  ],
+  "critical_code_review_comments": [
+    "The BootGate together with GameProvider.commit's readyRef guard is a correct, global fix for the reload data-loss bug.",
+    "consumeHoverboard no longer adds to stats.powerupsUsed. Only the engine counts the use, so it is counted once."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "skipped (not requested)", "frontend": "~98% (all requested fixes verified; one a11y item still open)"},
+  "seed_data_creation": "None; each browser context starts with empty storage",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "The mission-reward-dialog was not triggered, because it needs 3 runs or 1,000 m. It uses the same RewardDialog component that renders full size for the inbox and shop. Run phases come from window.__RR_DEBUG__.state.phase ('running', 'revive', 'over'). The hoverboard double-tap needs TouchEvent touchstart/touchend on run-gesture-area.",
+  "rca_of_issue": ""
+}

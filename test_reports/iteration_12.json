@@ -1,0 +1,24 @@
+{
+  "summary": "Phase 7 release prep verified independently. The GL lifecycle works on mobile web (375x667, SwiftShader): hidden gives {suspended:1,ready:1,live:false} with phase 'paused' and distance frozen; visible gives {suspended:1,ready:2,live:true}; the pause menu is shown, Resume continues the run with the 3D scene re-rendered, a second background/resume cycle works (ready 3), and there were no page errors. Regression: menu, characters/boards/worlds, shop, missions, daily, settings and leaderboard all load, and the run reaches revive and then game over. Config check: `expo config --type public` shows package com.velactra.rushrivals, versionCode 1, version 1.0.0, targetSdkVersion 36 (compileSdkVersion 37) and blockedPermissions. Admin reply to RR-DEMO01 returns email_sent=false with email_error='undeliverable_recipient', and the reason is stored on the reply. The contact form to delivered@resend.dev returned confirmation_email_sent=false on 2 tries because the upstream Emergent email proxy replied 429 code 'rate_limited'. This is an upstream quota hit after the main agent's earlier real sends, not a code defect. The reason 'rate_limited' was recorded.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/v1/public/contact", "issue": "Real send not confirmed in this run: the upstream proxy returned 429 rate_limited twice, 60s apart, and the response had confirmation_email_sent=false. Main agent had already observed 202 deliveries. Retest later when the proxy quota resets."},
+      {"endpoint": "POST /api/v1/public/contact", "issue": "The response does not include confirmation_email_error. It is stored only on the ticket. That is fine if it is meant to keep the reason away from the public; the review request implied it is returned."},
+      {"endpoint": "rr/mailer.py", "issue": "Proxy 429 'rate_limited' is mapped to the generic 502 email_failed and logged as ERROR. Consider treating it like daily_limit_reached (503 email_unavailable, WARNING)."}
+    ]
+  },
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": [], "react_native_issues": []},
+  "test_report_links": ["/app/backend/tests/test_phase7_email.py", "/app/tests/rr3d/p7_t1_lifecycle.py", "/app/test_reports/pytest/pytest_phase7.xml"],
+  "action_items": [
+    "Optional: treat proxy 429 'rate_limited' as a transient case (503 email_unavailable, warning-level log) in mailer.send_email.",
+    "Optional: decide whether the contact response should expose confirmation_email_error. Right now it is stored on the ticket only."
+  ],
+  "critical_code_review_comments": ["The glLifecycle state machine is simple and correct. The 'restore' event only goes back to live while the app is still active."],
+  "updated_files": ["/app/backend/tests/test_phase7_email.py (new)", "/app/tests/rr3d/p7_t1_lifecycle.py (new)"],
+  "success_rate": {"backend": "50% (1/2; the failure is caused by the upstream proxy rate limit)", "frontend": "100%"},
+  "seed_data_creation": "Created 2 contact tickets for delivered@resend.dev (name 'TEST_ P7') and 1 TEST_ reply on RR-DEMO01. This used 2 of the 5/hour contact quota for this IP.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run the lifecycle and regression check with: python3 /app/tests/rr3d/p7_t1_lifecycle.py. Email tests are in /app/backend/tests/test_phase7_email.py; the owner TOTP secret is in /tmp/rr_admin_totp.json. The Emergent email proxy can return 429 rate_limited after a burst of real sends."
+}
