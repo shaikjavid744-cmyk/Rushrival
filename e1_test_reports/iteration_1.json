@@ -1,0 +1,9 @@
+{"passed":5,"failed":0,"retest_needed":false,
+"bugs":[{"severity":"medium","type":"improvement","title":"Pause menu renders very small/semi-transparent at 360x640","evidence":"Screenshot pause-confirm-back-paused.png (360x640): PAUSED panel with Resume/Restart/Home is ~70px wide in the center of the road, text barely legible. Buttons still clickable via testID. Backend /api/health 200."}],
+"action_items":[{"type":"note","detail":"Test runs collected 0 coins (stayed in left lane until crash), so coin +1/+10 increments and banking with non-zero coins were only verified trivially (balance delta == run coins == 0). Play Again double-bank not exercised."},{"type":"note","detail":"Native FPS/haptics/hardware back not verifiable on web per spec_deviations."}],
+"checks":[
+{"criterion":"backend health","name":"test_tscheck_health.py","lane":"backend","status":"passed","evidence":"GET /api/health 200 {status: ok}"},
+{"criterion":"JRN-1, JRN-2/3/4, JRN-5/6/7, JRN-8/9, JRN-19 (412x915)","name":"launch-run-crash-bank","lane":"browser","status":"passed","evidence":"Splash->menu with Player; countdown 3; HUD; crash -> Game Over score 60 coins 0 dist 60m; menu balance == before+coins; after reload balance persisted, best 60"},
+{"criterion":"JRN-10/11/12, JRN-13/14, JRN-19 (360x640)","name":"pause-confirm-back","lane":"browser","status":"passed","evidence":"Escape on menu -> exit-dialog w/ Exit+Cancel; pause freezes score; restart/home dialogs cancel back to pause; resume countdown; Escape in run pauses; visibilitychange hidden->visible shows pause; home confirm -> menu"},
+{"criterion":"JRN-16/18","name":"corrupt-save-toggles","lane":"browser","status":"passed","evidence":"?devCorruptSave=1 -> toast 'Save data was reset', balance 0; sound ON->OFF, vibration OFF persisted after reload"}
+]}

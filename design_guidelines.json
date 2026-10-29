@@ -1,0 +1,185 @@
+{
+  "app_name": "Rush Rivals",
+  "personality": "7 Dark-First Utility with 4 Tactile/Playful button styling (Gaming)",
+  "personality_one_liner": "A high-energy, high-contrast arcade runner with chunky tactile buttons, dark navy panels, and vibrant electric blue/gold accents.",
+  "color": {
+    "surface": "#0A1128",
+    "onSurface": "#FFFFFF",
+    "surfaceSecondary": "#1C2A4F",
+    "onSurfaceSecondary": "#E1E7F5",
+    "surfaceTertiary": "#263866",
+    "onSurfaceTertiary": "#FFFFFF",
+    "surfaceInverse": "#FFFFFF",
+    "onSurfaceInverse": "#0A1128",
+    "brand": "#FFC107",
+    "onBrand": "#422000",
+    "brandPrimary": "#00D4FF",
+    "onBrandPrimary": "#002A33",
+    "brandSecondary": "#FFC107",
+    "onBrandSecondary": "#422000",
+    "brandTertiary": "#FF8C00",
+    "onBrandTertiary": "#FFFFFF",
+    "success": "#00E676",
+    "onSuccess": "#00331A",
+    "warning": "#FF9100",
+    "onWarning": "#4D2B00",
+    "error": "#FF3D00",
+    "onError": "#FFFFFF",
+    "info": "#00B0FF",
+    "onInfo": "#FFFFFF",
+    "border": "#2C3E6B",
+    "borderStrong": "#3D5699",
+    "divider": "#2C3E6B",
+    "muted": "#8FA5D1",
+    "gold": "#FFC107",
+    "goldDeep": "#B38600",
+    "onGold": "#422000",
+    "overlayScrim": "rgba(10, 17, 40, 0.85)",
+    "hudPanel": "rgba(28, 42, 79, 0.6)"
+  },
+  "typography": {
+    "displayFontFamily": "Lilita One",
+    "textFontFamily": "Nunito",
+    "scale": {
+      "sm": 12,
+      "base": 14,
+      "lg": 16,
+      "xl": 20,
+      "2xl": 24,
+      "3xl": 32,
+      "4xl": 48
+    }
+  },
+  "spacing": {
+    "rule": "Generous spacing for chunky game UI. Use lg/xl padding for panels to accommodate 3D buttons.",
+    "xs": 4,
+    "sm": 8,
+    "md": 12,
+    "lg": 16,
+    "xl": 24,
+    "2xl": 32,
+    "3xl": 48
+  },
+  "radius_tokens": {
+    "sm": 8,
+    "md": 16,
+    "lg": 24,
+    "pill": 999
+  },
+  "shadow_tier": "2",
+  "navigation": "stack_only",
+  "icon_set": "Ionicons",
+  "glassmorphism": {
+    "enabled": "true",
+    "do's": [
+      "Use on in-game HUD panels (score, coins) so the game world remains visible behind them",
+      "Use on Pause menu and Game Over overlays for a premium arcade feel"
+    ],
+    "dont's": [
+      "Do not use on primary 3D buttons",
+      "Do not use on low-end Android targets (fallback to solid surfaceSecondary)"
+    ]
+  },
+  "platform_libraries": {
+    "glass": {
+      "ios": "expo-glass-effect",
+      "android": "expo-blur",
+      "low_end_android_fallback": "solid hudPanel"
+    },
+    "image": "expo-image",
+    "blur": "expo-blur",
+    "bottom_sheet": "@gorhom/bottom-sheet",
+    "animation": "react-native-reanimated",
+    "gesture": "react-native-gesture-handler"
+  },
+  "screens": [
+    {
+      "name": "Splash",
+      "purpose": "Branding handoff from Velactra to Rush Rivals with loading progress.",
+      "states": {
+        "loading": "Shows logo with an animated progress bar",
+        "empty": "N/A",
+        "error": "Error panel with Retry if initialization fails"
+      },
+      "layout": "Center Velactra logo -> crossfade to Rush Rivals logo -> bottom anchored loading bar."
+    },
+    {
+      "name": "MainMenu",
+      "purpose": "Primary hub for the player to view stats, configure settings, and start the run.",
+      "states": {
+        "loading": "N/A",
+        "empty": "N/A",
+        "error": "N/A"
+      },
+      "layout": "Top zone: Player name 'Player', coin balance, best score. Center stage: City background and runner Rush. Lower-half thumb zone: Large gold PLAY button. Bottom zone: Settings toggles (sound, vibration, accessibility). Android back triggers Exit ConfirmationDialog."
+    },
+    {
+      "name": "Run",
+      "purpose": "The core gameplay loop rendered via Skia with an overlaid HUD.",
+      "states": {
+        "loading": "3-2-1-GO overlay before start",
+        "empty": "N/A",
+        "error": "N/A"
+      },
+      "layout": "Full-screen Skia canvas. Top HUD: Left-aligned score/distance, Right-aligned pause button and coins. HUD panels use glassmorphism to show gameplay underneath."
+    },
+    {
+      "name": "PauseMenu",
+      "purpose": "Interrupt the game safely, allowing the user to resume, restart, or quit.",
+      "states": {
+        "loading": "N/A",
+        "empty": "N/A",
+        "error": "N/A"
+      },
+      "layout": "Centered modal card over overlayScrim. Large title. Stacked electric blue PrimaryButtons for Resume, Restart, Home. Confirmations stacked recursively."
+    },
+    {
+      "name": "GameOver",
+      "purpose": "Celebrate the run, summarize rewards, and funnel back into gameplay.",
+      "states": {
+        "loading": "N/A",
+        "empty": "N/A",
+        "error": "N/A"
+      },
+      "layout": "Centered large card. Top: 'New Best!' badge if applicable. Middle: Large Score display, Distance, Coins Earned. Bottom: Side-by-side or stacked Gold 'Play Again' and Blue 'Home' buttons."
+    }
+  ],
+  "images": {
+    "city_background": {
+      "url": "https://images.unsplash.com/photo-1625726411847-8cbb60cc71e6?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1MTN8MHwxfHNlYXJjaHwxfHxjYXJ0b29uJTIwY2l0eSUyMHNreWxpbmUlMjBiYWNrZ3JvdW5kJTIwc3Vubnl8ZW58MHx8fHwxNzkzMjg0OTY0fDA&ixlib=rb-4.1.0&q=85",
+      "alt": "Cartoon city skyline background"
+    },
+    "runner_rush": {
+      "url": "https://images.unsplash.com/photo-1579269896398-4deb6cbdc320?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Njd8MHwxfHNlYXJjaHwxfHxyZWQlMjBob29kaWUlMjBjaGFyYWN0ZXIlMjBydW5uaW5nfGVufDB8fHx8MTc5MzI4NDk2NHww&ixlib=rb-4.1.0&q=85",
+      "alt": "Runner character Rush in red hoodie"
+    },
+    "gold_coin": {
+      "url": "https://images.unsplash.com/photo-1624365168056-daf44387e2ae?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Nzh8MHwxfHNlYXJjaHwxfHxnb2xkJTIwY29pbnxlbnwwfHx8fDE3OTMyODQ5NzV8MA&ixlib=rb-4.1.0&q=85",
+      "alt": "Gold coin"
+    },
+    "velactra_logo": {
+      "url": "https://images.unsplash.com/photo-1557053964-937650b63311?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NzV8MHwxfHNlYXJjaHwxfHxibHVlJTIwbG9nb3xlbnwwfHx8fDE3OTMyODQ5NzV8MA&ixlib=rb-4.1.0&q=85",
+      "alt": "Velactra game studio logo"
+    }
+  },
+  "haptics": {
+    "play_button": "impactHeavy",
+    "primary_button": "impactMedium",
+    "toggle_switch": "selection",
+    "coin_collect": "impactLight",
+    "crash": "notificationError",
+    "countdown_tick": "impactLight",
+    "countdown_go": "impactHeavy"
+  },
+  "instructions_to_main_agent": [
+    "Strictly follow the user's explicit request: use Dark Navy panels, Electric Blue primary buttons, and Gold for the PLAY button and coins.",
+    "Override the default 'no blue' rule since it was explicitly requested by the user in the problem statement.",
+    "Button Styling (Critical for Game UI): Implement PrimaryButton as a chunky 3D button. Use a container with a solid background and a darker bottom border (e.g., borderBottomWidth: 6) to create a 'lip' shadow. Use react-native-reanimated to scale the button down to 0.93 on press, simultaneously reducing the bottom border thickness to simulate pressing into the screen.",
+    "Typography: Use Lilita One (loaded via expo-font with local TTF, NOT @expo-google-fonts) for all display text (Score, Main Titles, Countdown, Button labels). Use Nunito for body text and smaller stats.",
+    "Layout Hierarchy: As discovered during research, keep the Main Menu strictly separated into zones: Player status (top), thematic character/background (center), large thumb-accessible PLAY button (bottom-center), and settings (bottom edge).",
+    "Images: For the MVP build, replace the Unsplash placeholders in this JSON with the 'already generated art' local assets mentioned in the prompt (e.g., require('../assets/rush-logo.png')).",
+    "Ensure all touch targets are strictly >= 48dp as requested for gaming accessibility.",
+    "Error Handling: The ToastMessage should be used for 'Save data was reset' and ErrorPanel with Retry should be used on the Splash screen if init fails.",
+    "No dead buttons. Do not implement UI for a shop, character selection, or missions. Only build the toggles and buttons explicitly mentioned."
+  ]
+}

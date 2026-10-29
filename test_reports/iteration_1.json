@@ -1,0 +1,29 @@
+{
+  "summary": "Phase 1 Rush Rivals tested on web preview (Expo web, Skia) plus backend. Jest 40/40 pass. Backend 3/3 pass (/api/health, /api/openapi.json, /api/). All requested journeys pass: JRN-1 splash->brand->menu with defaults, JRN-2 countdown 3,2,1,GO! and HUD, JRN-3 lanes -1,-1,0,1, JRN-4 jump/slide toggling, JRN-6/7 game over panel with new-best badge on the first run only (a lower run showed no badge), JRN-8 coins banked exactly (+56 -> balance 56, best 911), Play Again gives a fresh countdown with HUD 0/0 and the save is unchanged (no double-add), JRN-9 persistence after reload, JRN-10 pause freezes distance and Resume shows 3,2,1, JRN-11 restart dialog text, cancel and confirm work and 3 abandoned coins were not banked, JRN-12 home dialog cancel/confirm, JRN-13 visibilitychange hidden auto-pauses, JRN-14 Escape opens the Exit Game dialog and cancel closes it, JRN-16 ?devCorruptSave=1, garbage rr_save_main and 3s long-press all reset to defaults with the 'Save data was reset' toast and no crash, REQ-4 ?devFailInit=1 shows the error panel and Retry goes to the menu, JRN-18 toggles persist OFF/OFF/ON after reload and the a11y buttons change lane/jump/slide, JRN-19 play-button and hud-pause-button fully visible at 360x640 and 412x915, fps-counter visible in dev. Escape during a run pauses; the P key pauses. No page errors.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "run (HUD)", "issues": ["Dev FPS counter (green 'FPS 60') sits at the bottom edge of the score panel at top-left and partly overlaps it. Dev only, cosmetic."]},
+      {"screen": "run (canvas)", "issues": ["In one frame a large flat light-blue untextured shape covered the left and middle lanes from the horizon to the bottom. It is probably a train close to the camera (roof). Check that the train sprite or its texture is drawn correctly near the camera."]}
+    ],
+    "react_native_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_health.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "Optional: move the dev fps-counter clear of the score panel.",
+    "Optional: check how near-camera trains are drawn (flat light-blue polygon seen covering 2 lanes)."
+  ],
+  "critical_code_review_comments": [
+    "On the run screen, Escape/back while paused with no dialog open does nothing. On Android, back on a pause menu usually resumes; this is not required by the journeys.",
+    "Backend server.py has default values in os.environ.get for TIGRIS_* (template); unused in Phase 1."
+  ],
+  "updated_files": ["/app/backend/tests/test_health.py"],
+  "success_rate": {"backend": "100%", "frontend": "100% of requested journeys (web preview); native Android performance and swipes not verified"},
+  "seed_data_creation": "None. Used localStorage seeding (valid rr_save_main with best 911/coins 56) in the browser only.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Each browser_automation call is a fresh context, so clear or seed localStorage in each script. Wait about 500ms after opening pause/dialogs before clicking: dialogs animate in, and an immediate click on home-dialog-confirm failed with 'outside viewport'. Use window.__RR_DEBUG__.state.phase=='running' to detect the run start. Idle runs often crash at about 44 m with 0 coins; run 1 on a fresh seed collected 56 coins in lane 1.",
+  "rca_of_issue": ""
+}
