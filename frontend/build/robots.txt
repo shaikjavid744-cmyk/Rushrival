@@ -1,4 +1,0 @@
-User-agent: *
-Disallow: /admin
-
-Sitemap: https://rush-rivals-run--3g5s02w8.preview.emergentagent.com/sitemap.xml
